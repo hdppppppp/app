@@ -24,6 +24,14 @@ class TideImageAdapter(private val context: Context) : IKRImageAdapter {
     private val executor = Executors.newFixedThreadPool(3)
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
+    override fun fetchDrawable(
+        imageLoadOption: HRImageLoadOption,
+        callback: (drawable: Drawable?) -> Unit,
+    ) {
+        fetchDrawable(imageLoadOption, null, callback)
+    }
+
     override fun fetchDrawable(
         imageLoadOption: HRImageLoadOption,
         imageParams: JSONObject?,
