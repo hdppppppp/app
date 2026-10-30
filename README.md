@@ -12,7 +12,7 @@ mobile/
 ├─ shared/          # KMP：DTO、Ktor 客户端、Token 存储、Kuikly Compose 页面
 ├─ nativeBridge/    # 原生多 WebView 游戏容器（Bin 注入、localStorage）
 ├─ androidApp/      # Android 宿主：Application、KuiklyRenderActivity、适配器
-└─ .gitea/workflows/android.yml  # 云端构建 APK
+└─ .github/workflows/android.yml # GitHub Actions 云端构建 APK
 ```
 
 ## 版本
@@ -92,5 +92,7 @@ tideApiBaseUrl=https://git.xydaigua.cn
 
 ## 云端构建
 
-`.gitea/workflows/android.yml` 在 push / PR / 手动触发时构建 debug APK，
-并在手动触发时构建 release（未签名）。产物通过 Actions artifact 下载。
+远程仓库：<https://github.com/hdppppppp/app>
+
+`.github/workflows/android.yml` 在 push / PR / 手动触发时构建 debug APK，
+手动触发时额外构建 release（未签名）。产物通过 Actions artifact 下载。
