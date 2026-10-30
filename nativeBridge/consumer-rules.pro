@@ -1,4 +1,1 @@
-# nativeBridge 通过反射注入 JS 桥接对象，保留公开方法名。
--keepclassmembers class com.tideengine.mobile.bridge.GameWebViewBridge {
-    public *;
-}
+# nativeBridge 当前没有反射注入的 JS 接口；保留空文件以便后续接入。
