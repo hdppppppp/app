@@ -1,25 +1,24 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.PaddingValues
-import com.tencent.kuikly.compose.foundation.layout.Row
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.lazy.LazyColumn
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.ui.Alignment
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.graphics.Color
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.OperationLogDto
@@ -27,64 +26,62 @@ import com.tideengine.mobile.api.dto.OperationLogStatus
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideEmptyState
 import com.tideengine.mobile.ui.components.TideErrorBanner
-import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
-import com.tideengine.mobile.ui.components.TideSectionTitle
 import com.tideengine.mobile.ui.components.TideTag
+import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.components.formatIsoDate
-import com.tideengine.mobile.ui.theme.TideColors
-import kotlinx.coroutines.launch
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import kotlinx.coroutines.CancellationException
 
 @Composable
-fun LogsTab(contentPadding: PaddingValues) {
+fun LogsTab(
+    refreshKey: Int,
+    onRefresh: () -> Unit,
+    onSessionExpired: () -> Unit,
+) {
     var logs by remember { mutableStateOf<List<OperationLogDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
 
-    fun load() {
+    LaunchedEffect(refreshKey) {
         loading = true
         error = null
-        scope.launch {
-            try {
-                logs = ServiceLocator.logs.list(pageSize = 30).items
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "加载操作日志失败，请稍后重试"
-            } finally {
-                loading = false
+        try {
+            logs = ServiceLocator.logs.list(pageSize = 30).items
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            if (throwable is ApiException && throwable.isUnauthorized) {
+                onSessionExpired()
+            } else {
+                error = errorText(throwable)
             }
+        } finally {
+            loading = false
         }
     }
 
-    LaunchedEffect(Unit) { load() }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            TideSectionTitle(text = "操作日志") {
-                TideGhostButton(text = "刷新", onClick = { load() })
-            }
-        }
         if (loading) item { TideLoadingRow(text = "正在加载日志…") }
         error?.let { message ->
-            item { TideErrorBanner(message = message, onRetry = { load() }) }
+            item { TideErrorBanner(message = message, onRetry = onRefresh) }
         }
         if (!loading && logs.isEmpty() && error == null) {
             item { TideEmptyState(text = "暂无操作日志") }
         }
-        items(logs.size) { index ->
-            LogRow(logs[index])
+        items(items = logs, key = { it.id }) { log ->
+            LogRow(log)
         }
     }
 }
 
 @Composable
 private fun LogRow(log: OperationLogDto) {
+    val scheme = COUITheme.colorScheme
     TideCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -92,32 +89,32 @@ private fun LogRow(log: OperationLogDto) {
         ) {
             Text(
                 text = log.taskName.ifBlank { log.handlerType },
-                color = TideColors.Text,
+                color = scheme.onSurface,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
             TideTag(
                 text = log.status.label(),
-                color = log.status.color(),
-                background = log.status.background(),
+                color = log.status.contentColor(),
+                background = log.status.containerColor(),
             )
         }
 
         Text(
             text = "${log.action} · ${log.nickname ?: "—"} · ${formatIsoDate(log.createdAt)}",
-            color = TideColors.TextDim,
+            color = scheme.onSurfaceVariantSummary,
             fontSize = 11.sp,
         )
 
         if (!log.error.isNullOrBlank()) {
-            Text(text = log.error, color = TideColors.Danger, fontSize = 12.sp)
+            Text(text = log.error, color = scheme.error, fontSize = 12.sp)
         }
 
         if (log.durationMs != null) {
             Text(
                 text = "耗时 ${log.durationMs} ms · 触发方式 ${log.triggeredBy}",
-                color = TideColors.TextDim,
+                color = scheme.onSurfaceVariantSummary,
                 fontSize = 11.sp,
             )
         }
@@ -130,14 +127,22 @@ private fun OperationLogStatus.label(): String = when (this) {
     OperationLogStatus.Skipped -> "跳过"
 }
 
-private fun OperationLogStatus.color(): Color = when (this) {
-    OperationLogStatus.Succeeded -> TideColors.Success
-    OperationLogStatus.Failed -> TideColors.Danger
-    OperationLogStatus.Skipped -> TideColors.Warning
+@Composable
+private fun OperationLogStatus.contentColor(): Color {
+    val scheme = COUITheme.colorScheme
+    return when (this) {
+        OperationLogStatus.Succeeded -> scheme.onPrimaryContainer
+        OperationLogStatus.Failed -> scheme.onErrorContainer
+        OperationLogStatus.Skipped -> scheme.onSurfaceVariantSummary
+    }
 }
 
-private fun OperationLogStatus.background(): Color = when (this) {
-    OperationLogStatus.Succeeded -> TideColors.SuccessSoft
-    OperationLogStatus.Failed -> TideColors.DangerSoft
-    OperationLogStatus.Skipped -> TideColors.WarningSoft
+@Composable
+private fun OperationLogStatus.containerColor(): Color {
+    val scheme = COUITheme.colorScheme
+    return when (this) {
+        OperationLogStatus.Succeeded -> scheme.primaryContainer
+        OperationLogStatus.Failed -> scheme.errorContainer
+        OperationLogStatus.Skipped -> scheme.surfaceContainerHigh
+    }
 }

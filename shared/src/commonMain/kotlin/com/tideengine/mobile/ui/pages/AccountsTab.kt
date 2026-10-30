@@ -1,5 +1,13 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -7,20 +15,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.Column
-import com.tencent.kuikly.compose.foundation.layout.PaddingValues
-import com.tencent.kuikly.compose.foundation.layout.Row
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.lazy.LazyColumn
-import com.tencent.kuikly.compose.material3.Switch
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.ui.Alignment
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.GameAccountDto
@@ -32,16 +31,21 @@ import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
 import com.tideengine.mobile.ui.components.TideNoticeBanner
-import com.tideengine.mobile.ui.components.TideSectionTitle
 import com.tideengine.mobile.ui.components.TideStatRow
 import com.tideengine.mobile.ui.components.TideTag
+import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.components.formatIsoDate
-import com.tideengine.mobile.ui.theme.TideColors
+import io.github.suqi8.coui.kmp.basic.Switch
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
 fun AccountsTab(
-    contentPadding: PaddingValues,
+    refreshKey: Int,
+    onRefresh: () -> Unit,
+    onSessionExpired: () -> Unit,
     onOpenManager: (String) -> Unit,
 ) {
     var accounts by remember { mutableStateOf<List<GameAccountDto>>(emptyList()) }
@@ -53,20 +57,26 @@ fun AccountsTab(
     var notice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
+    fun handleFailure(throwable: Throwable) {
+        if (throwable is CancellationException) throw throwable
+        if (throwable is ApiException && throwable.isUnauthorized) {
+            onSessionExpired()
+        } else {
+            error = errorText(throwable)
+        }
+    }
+
+    LaunchedEffect(refreshKey) {
         loading = true
         error = null
-        scope.launch {
-            try {
-                accounts = ServiceLocator.gameAccounts.list()
-                switches = ServiceLocator.gameAccounts.listSwitches()
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "加载游戏账号失败，请稍后重试"
-            } finally {
-                loading = false
-            }
+        notice = null
+        try {
+            accounts = ServiceLocator.gameAccounts.list()
+            switches = ServiceLocator.gameAccounts.listSwitches()
+        } catch (throwable: Throwable) {
+            handleFailure(throwable)
+        } finally {
+            loading = false
         }
     }
 
@@ -77,10 +87,8 @@ fun AccountsTab(
                 ServiceLocator.gameAccounts.setPrimary(account.id)
                 accounts = ServiceLocator.gameAccounts.list()
                 notice = "已将「${account.nickname}」设为默认账号"
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "设置默认账号失败"
+            } catch (throwable: Throwable) {
+                handleFailure(throwable)
             } finally {
                 busyKey = null
             }
@@ -92,13 +100,12 @@ fun AccountsTab(
         scope.launch {
             try {
                 ServiceLocator.gameAccounts.remove(account.id)
+                accounts = accounts.filterNot { it.id == account.id }
+                switches = switches.filterNot { it.gameAccountId == account.id }
                 pendingRemove = null
-                load()
                 notice = "已解绑「${account.nickname}」"
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "解绑失败，请稍后重试"
+            } catch (throwable: Throwable) {
+                handleFailure(throwable)
             } finally {
                 busyKey = null
             }
@@ -118,33 +125,24 @@ fun AccountsTab(
                 switches = switches.map {
                     if (it.gameAccountId == account.id && it.handlerType == item.handlerType) updated else it
                 }
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "切换任务失败，请稍后重试"
+            } catch (throwable: Throwable) {
+                handleFailure(throwable)
             } finally {
                 busyKey = null
             }
         }
     }
 
-    LaunchedEffect(Unit) { load() }
-
     val switchesByAccount = switches.groupBy { it.gameAccountId }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            TideSectionTitle(text = "游戏账号") {
-                TideGhostButton(text = "刷新", onClick = { load() })
-            }
-        }
         if (loading) item { TideLoadingRow(text = "正在加载游戏账号…") }
         error?.let { message ->
-            item { TideErrorBanner(message = message, onRetry = { load() }) }
+            item { TideErrorBanner(message = message, onRetry = onRefresh) }
         }
         notice?.let { message ->
             item { TideNoticeBanner(message = message) }
@@ -152,8 +150,7 @@ fun AccountsTab(
         if (!loading && accounts.isEmpty() && error == null) {
             item { TideEmptyState(text = "还没有绑定游戏账号，请先在 Web 端完成登录绑定") }
         }
-        items(accounts.size) { index ->
-            val account = accounts[index]
+        items(items = accounts, key = { it.id }) { account ->
             AccountCard(
                 account = account,
                 switches = switchesByAccount[account.id].orEmpty(),
@@ -183,6 +180,7 @@ private fun AccountCard(
     onToggleSwitch: (TaskSwitchDto) -> Unit,
     onOpenManager: () -> Unit,
 ) {
+    val scheme = COUITheme.colorScheme
     TideCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -190,7 +188,7 @@ private fun AccountCard(
         ) {
             Text(
                 text = account.nickname,
-                color = TideColors.Text,
+                color = scheme.onSurface,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
@@ -198,8 +196,8 @@ private fun AccountCard(
             if (account.isPrimary) {
                 TideTag(
                     text = "默认",
-                    color = TideColors.AccentStrong,
-                    background = TideColors.AccentSoft,
+                    color = scheme.onPrimaryContainer,
+                    background = scheme.primaryContainer,
                 )
             }
         }
@@ -235,7 +233,7 @@ private fun AccountCard(
             ) {
                 Text(
                     text = "解绑会删除该账号的 Bin 与凭据，且不可恢复。",
-                    color = TideColors.Danger,
+                    color = scheme.error,
                     fontSize = 11.sp,
                     modifier = Modifier.weight(1f),
                 )
@@ -247,7 +245,7 @@ private fun AccountCard(
             TideDivider()
             Text(
                 text = "账号任务开关",
-                color = TideColors.TextSoft,
+                color = scheme.onSurfaceSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -268,19 +266,20 @@ private fun SwitchRow(
     busy: Boolean,
     onToggle: () -> Unit,
 ) {
+    val scheme = COUITheme.colorScheme
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = item.label, color = TideColors.Text, fontSize = 13.sp)
+            Text(text = item.label, color = scheme.onSurface, fontSize = 13.sp)
             Text(
                 text = if (item.enabled) {
                     "下次执行 ${formatIsoDate(item.nextRunAt)}"
                 } else {
                     item.description.ifBlank { "未启用" }
                 },
-                color = TideColors.TextDim,
+                color = scheme.onSurfaceVariantSummary,
                 fontSize = 11.sp,
             )
         }

@@ -1,44 +1,49 @@
 package com.tideengine.mobile.ui.components
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import com.tencent.kuikly.compose.foundation.background
-import com.tencent.kuikly.compose.foundation.clickable
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.Box
-import com.tencent.kuikly.compose.foundation.layout.Column
-import com.tencent.kuikly.compose.foundation.layout.ColumnScope
-import com.tencent.kuikly.compose.foundation.layout.Row
-import com.tencent.kuikly.compose.foundation.layout.RowScope
-import com.tencent.kuikly.compose.foundation.layout.Spacer
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.layout.height
-import com.tencent.kuikly.compose.foundation.layout.padding
-import com.tencent.kuikly.compose.foundation.layout.size
-import com.tencent.kuikly.compose.foundation.layout.width
-import com.tencent.kuikly.compose.foundation.shape.RoundedCornerShape
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.ui.Alignment
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.graphics.Color
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.text.style.TextOverflow
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
-import com.tideengine.mobile.ui.theme.TideColors
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import io.github.suqi8.coui.kmp.basic.Button
+import io.github.suqi8.coui.kmp.basic.ButtonDefaults
+import io.github.suqi8.coui.kmp.basic.Card
+import io.github.suqi8.coui.kmp.basic.CircularProgressIndicator
+import io.github.suqi8.coui.kmp.basic.HorizontalDivider
+import io.github.suqi8.coui.kmp.basic.Surface
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextButton
+import com.tideengine.mobile.api.ApiException
+import io.github.suqi8.coui.kmp.theme.COUITheme
 
 @Composable
 fun TideCard(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(TideColors.Surface, RoundedCornerShape(14.dp))
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        content = content,
-    )
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            content = content,
+        )
+    }
 }
 
 @Composable
@@ -49,20 +54,14 @@ fun TidePrimaryButton(
     loading: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(46.dp)
-            .background(
-                if (enabled && !loading) TideColors.Accent else TideColors.BorderStrong,
-                RoundedCornerShape(12.dp),
-            )
-            .clickable(enabled = enabled && !loading) { onClick() },
-        contentAlignment = Alignment.Center,
+    Button(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        enabled = enabled && !loading,
+        colors = ButtonDefaults.buttonColorsPrimary(),
     ) {
         Text(
             text = if (loading) "处理中…" else text,
-            color = TideColors.AccentContrast,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -77,49 +76,46 @@ fun TideGhostButton(
     danger: Boolean = false,
     onClick: () -> Unit,
 ) {
-    Box(
-        modifier = modifier
-            .height(34.dp)
-            .background(
-                if (danger) TideColors.DangerSoft else TideColors.Surface2,
-                RoundedCornerShape(9.dp),
-            )
-            .clickable(enabled = enabled) { onClick() }
-            .padding(horizontal = 12.dp),
-        contentAlignment = Alignment.Center,
+    val scheme = COUITheme.colorScheme
+    TextButton(
+        onClick = onClick,
+        modifier = modifier,
+        enabled = enabled,
+        colors = ButtonDefaults.textButtonColors(
+            color = if (danger) scheme.errorContainer else scheme.secondaryContainer,
+            textColor = if (danger) scheme.onErrorContainer else scheme.onSecondaryContainer,
+            disabledColor = scheme.surfaceContainerHigh,
+            disabledTextColor = scheme.disabledOnSurface,
+        ),
     ) {
-        Text(
-            text = text,
-            color = if (danger) TideColors.Danger else TideColors.TextSoft,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Medium,
-        )
+        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
 fun TideTag(
     text: String,
-    color: Color = TideColors.Info,
-    background: Color = TideColors.InfoSoft,
+    color: Color = COUITheme.colorScheme.onPrimaryContainer,
+    background: Color = COUITheme.colorScheme.primaryContainer,
 ) {
-    Box(
-        modifier = Modifier
-            .background(background, RoundedCornerShape(6.dp))
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+    Surface(
+        color = background,
+        contentColor = color,
+        shape = RoundedCornerShape(6.dp),
+        shadowElevation = 0.dp,
     ) {
-        Text(text = text, color = color, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+        Text(
+            text = text,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+        )
     }
 }
 
 @Composable
 fun TideDivider() {
-    Spacer(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(1.dp)
-            .background(TideColors.Border),
-    )
+    HorizontalDivider(color = COUITheme.colorScheme.dividerLine)
 }
 
 @Composable
@@ -130,7 +126,7 @@ fun TideSectionTitle(text: String, trailing: @Composable (RowScope.() -> Unit)? 
     ) {
         Text(
             text = text,
-            color = TideColors.Text,
+            color = COUITheme.colorScheme.onSurface,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
@@ -147,7 +143,11 @@ fun TideEmptyState(text: String) {
             .padding(vertical = 36.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Text(text = text, color = TideColors.TextDim, fontSize = 13.sp)
+        Text(
+            text = text,
+            color = COUITheme.colorScheme.onSurfaceVariantSummary,
+            fontSize = 13.sp,
+        )
     }
 }
 
@@ -156,13 +156,13 @@ fun TideErrorBanner(message: String, onRetry: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(TideColors.DangerSoft, RoundedCornerShape(10.dp))
+            .background(COUITheme.colorScheme.errorContainer, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = message,
-            color = TideColors.Danger,
+            color = COUITheme.colorScheme.onErrorContainer,
             fontSize = 12.sp,
             modifier = Modifier.weight(1f),
         )
@@ -178,10 +178,14 @@ fun TideNoticeBanner(message: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(TideColors.SuccessSoft, RoundedCornerShape(10.dp))
+            .background(COUITheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Text(text = message, color = TideColors.Success, fontSize = 12.sp)
+        Text(
+            text = message,
+            color = COUITheme.colorScheme.onPrimaryContainer,
+            fontSize = 12.sp,
+        )
     }
 }
 
@@ -194,13 +198,13 @@ fun TideLoadingRow(text: String = "加载中…") {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(TideColors.Accent, RoundedCornerShape(4.dp)),
-        )
+        CircularProgressIndicator(modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(8.dp))
-        Text(text = text, color = TideColors.TextDim, fontSize = 13.sp)
+        Text(
+            text = text,
+            color = COUITheme.colorScheme.onSurfaceVariantSummary,
+            fontSize = 13.sp,
+        )
     }
 }
 
@@ -209,13 +213,13 @@ fun TideStatRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = label,
-            color = TideColors.TextDim,
+            color = COUITheme.colorScheme.onSurfaceVariantSummary,
             fontSize = 12.sp,
             modifier = Modifier.width(84.dp),
         )
         Text(
             text = value,
-            color = TideColors.Text,
+            color = COUITheme.colorScheme.onSurface,
             fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -224,7 +228,32 @@ fun TideStatRow(label: String, value: String) {
     }
 }
 
-/** 服务端返回 ISO 8601；直接截取到分钟，避免在客户端引入时区依赖。 */
+@Composable
+fun TideFieldLabel(text: String) {
+    Text(
+        text = text,
+        color = COUITheme.colorScheme.onSurfaceVariantSummary,
+        fontSize = 12.sp,
+        modifier = Modifier.fillMaxWidth(),
+    )
+}
+
+@Composable
+fun TideVerticalGap(height: Int = 8) {
+    Spacer(Modifier.height(height.dp))
+}
+
+fun errorText(throwable: Throwable): String = when (throwable) {
+    is ApiException -> if (throwable.isNetworkError) {
+        "无法连接服务器，请检查网络或 API 地址"
+    } else {
+        throwable.message
+    }
+
+    else -> throwable.message?.takeIf { it.isNotBlank() } ?: "操作失败，请稍后重试"
+}
+
+/** 服务端返回 ISO 8601；截取到分钟，避免引入时区依赖。 */
 fun formatIsoDate(value: String?): String {
     if (value.isNullOrBlank()) return "—"
     val normalized = value.replace('T', ' ')

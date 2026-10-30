@@ -1,66 +1,70 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.tencent.kuikly.compose.ComposeContainer
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.Column
-import com.tencent.kuikly.compose.foundation.layout.PaddingValues
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.layout.padding
-import com.tencent.kuikly.compose.foundation.lazy.LazyColumn
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.material3.TextField
-import com.tencent.kuikly.compose.setContent
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.text.input.PasswordVisualTransformation
-import com.tencent.kuikly.compose.ui.text.input.TextFieldValue
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
-import com.tencent.kuikly.core.annotations.Page
-import com.tencent.kuikly.core.module.RouterModule
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
-import com.tideengine.mobile.api.ApiException
-import com.tideengine.mobile.ui.AppSession
+import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TidePrimaryButton
-import com.tideengine.mobile.ui.theme.TideColors
+import com.tideengine.mobile.ui.components.errorText
+import io.github.suqi8.coui.kmp.basic.Surface
+import io.github.suqi8.coui.kmp.basic.Switch
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextField
+import io.github.suqi8.coui.kmp.basic.TextFieldMode
+import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.launch
 
-@Page("login")
-class LoginPage : ComposeContainer() {
-    override fun willInit() {
-        super.willInit()
-        setContent {
-            LoginScreen(
-                onAuthenticated = {
-                    router().openPage("home")
-                    router().closePage()
-                },
-            )
-        }
-    }
-
-    private fun router(): RouterModule = acquireModule<RouterModule>(RouterModule.MODULE_NAME)
-}
-
 @Composable
-private fun LoginScreen(onAuthenticated: () -> Unit) {
-    var identifier by remember { mutableStateOf(TextFieldValue("")) }
-    var password by remember { mutableStateOf(TextFieldValue("")) }
-    var loading by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
+    val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
 
+    var identifier by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var password by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var rememberMe by rememberSaveable { mutableStateOf(true) }
+    var loading by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+
     fun submit() {
-        if (identifier.text.isBlank() || password.text.isBlank()) {
+        val account = identifier.text.trim()
+        if (account.isBlank() || password.text.isBlank()) {
             error = "请输入账号和密码"
             return
         }
@@ -69,81 +73,127 @@ private fun LoginScreen(onAuthenticated: () -> Unit) {
         error = null
         scope.launch {
             try {
-                if (!ServiceLocator.isInitialized) {
-                    error = "客户端尚未初始化，请重启应用"
-                    return@launch
-                }
-                val response = ServiceLocator.auth.login(identifier.text.trim(), password.text)
-                AppSession.user = response.user
-                onAuthenticated()
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "登录失败，请稍后重试"
+                val response = ServiceLocator.auth.login(account, password.text, rememberMe)
+                onAuthenticated(response.user)
+            } catch (throwable: Throwable) {
+                error = errorText(throwable)
             } finally {
                 loading = false
             }
         }
     }
 
-    LazyColumn(
+    Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 20.dp),
-        contentPadding = PaddingValues(vertical = 28.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .background(scheme.background)
+            .systemBarsPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp, vertical = 32.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
-        item {
+        Column(
+            modifier = Modifier.widthIn(max = 460.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Spacer(Modifier.height(24.dp))
+
+            Surface(
+                modifier = Modifier.size(58.dp),
+                shape = CircleShape,
+                color = scheme.primary,
+                contentColor = scheme.onPrimary,
+                shadowElevation = 0.dp,
+            ) {
+                Box(contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "潮",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            }
+
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "潮汐引擎",
-                    color = TideColors.Text,
-                    fontSize = 28.sp,
+                    fontSize = 30.sp,
                     fontWeight = FontWeight.Bold,
+                    color = scheme.onBackground,
                 )
                 Text(
-                    text = "登录后管理游戏账号、自动任务与操作日志",
-                    color = TideColors.TextDim,
-                    fontSize = 13.sp,
+                    text = "登录后管理游戏账号与自动任务",
+                    fontSize = 14.sp,
+                    color = scheme.onBackgroundVariant,
                 )
             }
-        }
 
-        item {
             TideCard {
-                Text(text = "账号登录", color = TideColors.Text, fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
-
                 TextField(
                     value = identifier,
                     onValueChange = { identifier = it },
-                    label = { Text("用户名或邮箱") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    label = "邮箱或用户名",
+                    backgroundMode = TextFieldMode.Rectangle,
+                    enabled = !loading,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Email,
+                        imeAction = ImeAction.Next,
+                    ),
                 )
 
                 TextField(
                     value = password,
                     onValueChange = { password = it },
-                    label = { Text("密码") },
-                    singleLine = true,
-                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
+                    label = "密码",
+                    backgroundMode = TextFieldMode.Rectangle,
+                    enabled = !loading,
+                    showPasswordToggle = true,
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Password,
+                        imeAction = ImeAction.Done,
+                    ),
                 )
 
-                error?.let { message -> TideErrorBanner(message = message) }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "记住登录",
+                        fontSize = 14.sp,
+                        color = scheme.onSurface,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Switch(
+                        checked = rememberMe,
+                        onCheckedChange = { rememberMe = it },
+                        enabled = !loading,
+                    )
+                }
+
+                error?.let { message ->
+                    TideErrorBanner(message = message)
+                }
 
                 TidePrimaryButton(
                     text = "登录",
+                    enabled = !loading,
                     loading = loading,
                     onClick = { submit() },
                 )
-
-                Text(
-                    text = "账号由管理员创建，或通过 Web 端注册后使用",
-                    color = TideColors.TextDim,
-                    fontSize = 11.sp,
-                )
             }
+
+            Text(
+                text = "服务地址：${ServiceLocator.apiBaseUrl}",
+                fontSize = 11.sp,
+                color = scheme.onBackgroundVariant,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
     }
 }

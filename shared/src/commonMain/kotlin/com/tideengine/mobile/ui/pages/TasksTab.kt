@@ -1,5 +1,12 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -7,21 +14,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.PaddingValues
-import com.tencent.kuikly.compose.foundation.layout.Row
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.lazy.LazyColumn
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.ui.Alignment
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.TaskDto
+import com.tideengine.mobile.api.dto.TaskExecutionStatus
 import com.tideengine.mobile.api.dto.TaskScheduleType
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideEmptyState
@@ -29,14 +30,20 @@ import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
 import com.tideengine.mobile.ui.components.TideNoticeBanner
-import com.tideengine.mobile.ui.components.TideSectionTitle
 import com.tideengine.mobile.ui.components.TideTag
+import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.components.formatIsoDate
-import com.tideengine.mobile.ui.theme.TideColors
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
-fun TasksTab(contentPadding: PaddingValues) {
+fun TasksTab(
+    refreshKey: Int,
+    onRefresh: () -> Unit,
+    onSessionExpired: () -> Unit,
+) {
     var tasks by remember { mutableStateOf<List<TaskDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
     var busyId by remember { mutableStateOf<String?>(null) }
@@ -44,19 +51,25 @@ fun TasksTab(contentPadding: PaddingValues) {
     var notice by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
-    fun load() {
+    fun handleFailure(throwable: Throwable) {
+        if (throwable is CancellationException) throw throwable
+        if (throwable is ApiException && throwable.isUnauthorized) {
+            onSessionExpired()
+        } else {
+            error = errorText(throwable)
+        }
+    }
+
+    LaunchedEffect(refreshKey) {
         loading = true
         error = null
-        scope.launch {
-            try {
-                tasks = ServiceLocator.tasks.list(pageSize = 50).items
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "加载任务失败，请稍后重试"
-            } finally {
-                loading = false
-            }
+        notice = null
+        try {
+            tasks = ServiceLocator.tasks.list(pageSize = 50).items
+        } catch (throwable: Throwable) {
+            handleFailure(throwable)
+        } finally {
+            loading = false
         }
     }
 
@@ -67,10 +80,8 @@ fun TasksTab(contentPadding: PaddingValues) {
             try {
                 ServiceLocator.tasks.setEnabled(task.id, !task.enabled)
                 tasks = tasks.map { if (it.id == task.id) it.copy(enabled = !task.enabled) else it }
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "操作失败，请稍后重试"
+            } catch (throwable: Throwable) {
+                handleFailure(throwable)
             } finally {
                 busyId = null
             }
@@ -83,46 +94,36 @@ fun TasksTab(contentPadding: PaddingValues) {
         scope.launch {
             try {
                 val execution = ServiceLocator.tasks.run(task.id)
-                notice = when (execution?.status?.wireName) {
-                    "succeeded" -> "任务「${task.name}」执行成功"
-                    "failed" -> "任务「${task.name}」执行失败：${execution.error ?: "无错误详情"}"
-                    "skipped" -> "任务「${task.name}」已跳过"
+                notice = when (execution?.status) {
+                    TaskExecutionStatus.Succeeded -> "任务「${task.name}」执行成功"
+                    TaskExecutionStatus.Failed -> "任务「${task.name}」执行失败：${execution?.error ?: "无错误详情"}"
+                    TaskExecutionStatus.Skipped -> "任务「${task.name}」已跳过"
                     else -> "已提交执行请求"
                 }
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "触发执行失败，请稍后重试"
+            } catch (throwable: Throwable) {
+                handleFailure(throwable)
             } finally {
                 busyId = null
             }
         }
     }
 
-    LaunchedEffect(Unit) { load() }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item {
-            TideSectionTitle(text = "自动任务") {
-                TideGhostButton(text = "刷新", onClick = { load() })
-            }
-        }
         if (loading) item { TideLoadingRow(text = "正在加载任务…") }
         error?.let { message ->
-            item { TideErrorBanner(message = message, onRetry = { load() }) }
+            item { TideErrorBanner(message = message, onRetry = onRefresh) }
         }
         notice?.let { message ->
             item { TideNoticeBanner(message = message) }
         }
         if (!loading && tasks.isEmpty() && error == null) {
-            item { TideEmptyState(text = "暂无任务，可在 Web 端创建后下拉刷新") }
+            item { TideEmptyState(text = "暂无任务，可在 Web 端创建后刷新") }
         }
-        items(tasks.size) { index ->
-            val task = tasks[index]
+        items(items = tasks, key = { it.id }) { task ->
             TaskRow(
                 task = task,
                 busy = busyId == task.id,
@@ -140,6 +141,7 @@ private fun TaskRow(
     onToggle: () -> Unit,
     onRun: () -> Unit,
 ) {
+    val scheme = COUITheme.colorScheme
     TideCard {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -147,29 +149,36 @@ private fun TaskRow(
         ) {
             Text(
                 text = task.name,
-                color = TideColors.Text,
+                color = scheme.onSurface,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
             TideTag(
                 text = if (task.enabled) "已启用" else "已停用",
-                color = if (task.enabled) TideColors.Success else TideColors.TextDim,
-                background = if (task.enabled) TideColors.SuccessSoft else TideColors.Surface3,
+                color = if (task.enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariantSummary,
+                background = if (task.enabled) scheme.primaryContainer else scheme.surfaceContainerHigh,
             )
         }
 
         Text(
             text = "${task.handlerType} · ${task.scheduleType.label()}",
-            color = TideColors.TextSoft,
+            color = scheme.onSurfaceSecondary,
             fontSize = 12.sp,
         )
         Text(
             text = "下次执行 ${formatIsoDate(task.nextRunAt)} · 上次执行 ${formatIsoDate(task.lastRunAt)}",
-            color = TideColors.TextDim,
+            color = scheme.onSurfaceVariantSummary,
             fontSize = 11.sp,
         )
-        TaskDescription(task.description)
+        if (task.description.isNotBlank()) {
+            Text(
+                text = task.description,
+                color = scheme.onSurfaceVariantSummary,
+                fontSize = 12.sp,
+                maxLines = 2,
+            )
+        }
 
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -181,18 +190,12 @@ private fun TaskRow(
                 onClick = onToggle,
             )
             TideGhostButton(
-                text = "立即执行",
+                text = if (busy) "执行中…" else "立即执行",
                 enabled = !busy && task.enabled,
                 onClick = onRun,
             )
         }
     }
-}
-
-@Composable
-private fun TaskDescription(description: String) {
-    if (description.isBlank()) return
-    Text(text = description, color = TideColors.TextDim, fontSize = 12.sp, maxLines = 2)
 }
 
 private fun TaskScheduleType.label(): String = when (this) {
@@ -202,11 +205,3 @@ private fun TaskScheduleType.label(): String = when (this) {
     TaskScheduleType.Monthly -> "每月"
     TaskScheduleType.Interval -> "固定间隔"
 }
-
-private val com.tideengine.mobile.api.dto.TaskExecutionStatus.wireName: String
-    get() = when (this) {
-        com.tideengine.mobile.api.dto.TaskExecutionStatus.Running -> "running"
-        com.tideengine.mobile.api.dto.TaskExecutionStatus.Succeeded -> "succeeded"
-        com.tideengine.mobile.api.dto.TaskExecutionStatus.Failed -> "failed"
-        com.tideengine.mobile.api.dto.TaskExecutionStatus.Skipped -> "skipped"
-    }

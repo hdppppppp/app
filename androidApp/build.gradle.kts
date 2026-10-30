@@ -1,9 +1,11 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
+    alias(libs.plugins.kotlin.compose)
 }
 
-val kuiklyVersion = property("kuiklyVersion").toString()
 val apiBaseUrl = providers.gradleProperty("tideApiBaseUrl").get()
 
 // 发布签名只从环境变量读取，密钥与密码不进仓库。
@@ -20,12 +22,12 @@ val hasReleaseSigning = listOf(
 
 android {
     namespace = "com.tideengine.mobile"
-    compileSdk = 34
+    compileSdk = libs.versions.compileSdk.get().toInt()
 
     defaultConfig {
         applicationId = "com.tideengine.mobile"
-        minSdk = 26
-        targetSdk = 34
+        minSdk = libs.versions.minSdk.get().toInt()
+        targetSdk = libs.versions.targetSdk.get().toInt()
         versionCode = System.getenv("VERSION_CODE")?.toIntOrNull() ?: 1
         versionName = System.getenv("VERSION_NAME")?.takeIf { it.isNotBlank() } ?: "0.1.0"
 
@@ -34,6 +36,7 @@ android {
 
     buildFeatures {
         buildConfig = true
+        compose = true
     }
 
     signingConfigs {
@@ -52,7 +55,6 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             }
-            // 骨架阶段先关闭 R8，避免 Kuikly KSP 生成类被裁掉；确认稳定后再开启。
             isMinifyEnabled = false
             isShrinkResources = false
             proguardFiles(
@@ -66,9 +68,11 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
+}
 
-    kotlinOptions {
-        jvmTarget = "17"
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
     }
 }
 
@@ -76,12 +80,10 @@ dependencies {
     implementation(project(":shared"))
     implementation(project(":nativeBridge"))
 
-    implementation("com.tencent.kuikly-open:core-render-android:$kuiklyVersion")
-    implementation("com.tencent.kuikly-open:core:$kuiklyVersion")
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.webkit)
+    implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.android)
 }

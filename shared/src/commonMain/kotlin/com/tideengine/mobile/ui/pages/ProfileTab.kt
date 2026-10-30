@@ -1,55 +1,73 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import com.tencent.kuikly.compose.foundation.layout.Arrangement
-import com.tencent.kuikly.compose.foundation.layout.PaddingValues
-import com.tencent.kuikly.compose.foundation.layout.fillMaxSize
-import com.tencent.kuikly.compose.foundation.layout.fillMaxWidth
-import com.tencent.kuikly.compose.foundation.lazy.LazyColumn
-import com.tencent.kuikly.compose.material3.Text
-import com.tencent.kuikly.compose.material3.TextField
-import com.tencent.kuikly.compose.ui.Modifier
-import com.tencent.kuikly.compose.ui.text.font.FontWeight
-import com.tencent.kuikly.compose.ui.unit.dp
-import com.tencent.kuikly.compose.ui.unit.sp
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
+import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.api.dto.UserRole
 import com.tideengine.mobile.api.dto.UserStatus
-import com.tideengine.mobile.ui.AppSession
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideDivider
 import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideNoticeBanner
 import com.tideengine.mobile.ui.components.TidePrimaryButton
-import com.tideengine.mobile.ui.components.TideSectionTitle
 import com.tideengine.mobile.ui.components.TideStatRow
 import com.tideengine.mobile.ui.components.TideTag
+import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.components.formatIsoDate
-import com.tideengine.mobile.ui.theme.TideColors
+import io.github.suqi8.coui.kmp.basic.Surface
+import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.basic.TextField
+import io.github.suqi8.coui.kmp.basic.TextFieldMode
+import io.github.suqi8.coui.kmp.theme.COUITheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.launch
 
 @Composable
 fun ProfileTab(
-    contentPadding: PaddingValues,
+    user: PublicUser,
+    onSessionExpired: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
-    val user = AppSession.user
-    var currentPassword by remember { mutableStateOf("") }
-    var newPassword by remember { mutableStateOf("") }
+    val scheme = COUITheme.colorScheme
+    val scope = rememberCoroutineScope()
+
+    var currentPassword by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    var newPassword by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
     var saving by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
+    var confirmLogout by remember { mutableStateOf(false) }
 
     fun changePassword() {
-        if (currentPassword.isBlank() || newPassword.length < 8) {
+        if (currentPassword.text.isBlank() || newPassword.text.length < 8) {
             error = "请填写当前密码，新密码至少 8 位"
             return
         }
@@ -58,71 +76,114 @@ fun ProfileTab(
         notice = null
         scope.launch {
             try {
-                ServiceLocator.auth.changePassword(currentPassword, newPassword)
-                currentPassword = ""
-                newPassword = ""
+                ServiceLocator.auth.changePassword(currentPassword.text, newPassword.text)
+                currentPassword = TextFieldValue("")
+                newPassword = TextFieldValue("")
                 notice = "密码已更新，下次登录请使用新密码"
-            } catch (e: ApiException) {
-                error = e.message
-            } catch (e: Throwable) {
-                error = "修改密码失败，请稍后重试"
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                if (throwable is ApiException && throwable.isUnauthorized) {
+                    onSessionExpired()
+                } else {
+                    error = errorText(throwable)
+                }
             } finally {
                 saving = false
             }
         }
     }
 
+    fun logout() {
+        ServiceLocator.auth.logout()
+        confirmLogout = false
+        onLoggedOut()
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = contentPadding,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        item { TideSectionTitle(text = "我的") }
-
         item {
             TideCard {
-                Text(
-                    text = user?.displayName ?: "未登录",
-                    color = TideColors.Text,
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = user?.username ?: "—",
-                    color = TideColors.TextDim,
-                    fontSize = 12.sp,
-                )
-                if (user != null) {
-                    TideStatRow(label = "邮箱", value = user.email)
-                    TideStatRow(label = "角色", value = user.role.label())
-                    TideStatRow(label = "状态", value = user.status.label())
-                    TideStatRow(label = "上次登录", value = formatIsoDate(user.lastLoginAt))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Surface(
+                        modifier = Modifier.size(52.dp),
+                        shape = CircleShape,
+                        color = scheme.primary,
+                        contentColor = scheme.onPrimary,
+                        shadowElevation = 0.dp,
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = user.displayName.take(1).uppercase(),
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
+
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = user.displayName,
+                            color = scheme.onSurface,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        Text(
+                            text = "@${user.username}",
+                            color = scheme.onSurfaceVariantSummary,
+                            fontSize = 12.sp,
+                        )
+                    }
+
+                    TideTag(text = user.role.label())
                 }
+
+                TideStatRow(label = "邮箱", value = user.email)
+                TideStatRow(label = "角色", value = user.role.label())
+                TideStatRow(label = "状态", value = user.status.label())
+                TideStatRow(label = "上次登录", value = formatIsoDate(user.lastLoginAt))
             }
         }
 
         item {
             TideCard {
-                Text(text = "修改密码", color = TideColors.Text, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = "修改密码",
+                    color = scheme.onSurface,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
                 TextField(
                     value = currentPassword,
                     onValueChange = { currentPassword = it },
-                    label = { Text("当前密码") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    label = "当前密码",
+                    backgroundMode = TextFieldMode.Rectangle,
+                    enabled = !saving,
+                    showPasswordToggle = true,
+                    singleLine = true,
                 )
                 TextField(
                     value = newPassword,
                     onValueChange = { newPassword = it },
-                    label = { Text("新密码（至少 8 位）") },
-                    singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
+                    label = "新密码（至少 8 位）",
+                    backgroundMode = TextFieldMode.Rectangle,
+                    enabled = !saving,
+                    showPasswordToggle = true,
+                    singleLine = true,
                 )
                 error?.let { TideErrorBanner(message = it) }
                 notice?.let { TideNoticeBanner(message = it) }
                 TidePrimaryButton(
                     text = "保存新密码",
                     loading = saving,
+                    enabled = !saving,
                     onClick = { changePassword() },
                 )
             }
@@ -132,21 +193,25 @@ fun ProfileTab(
             TideCard {
                 TideStatRow(label = "服务地址", value = ServiceLocator.apiBaseUrl)
                 TideStatRow(label = "多开管理器", value = "原生 WebView 容器")
-                TideTag(
-                    text = "Bin 仅保存在本机应用私有目录",
-                    color = TideColors.Info,
-                    background = TideColors.InfoSoft,
-                )
+                TideNoticeBanner(message = "Bin 仅保存在本机应用私有目录，不会上传到服务端。")
                 TideDivider()
-                TideGhostButton(
-                    text = "退出登录",
-                    danger = true,
-                    onClick = {
-                        ServiceLocator.auth.logout()
-                        AppSession.clear()
-                        onLoggedOut()
-                    },
-                )
+                if (confirmLogout) {
+                    Text(
+                        text = "确认退出当前账号？",
+                        color = scheme.error,
+                        fontSize = 12.sp,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TideGhostButton(text = "取消", onClick = { confirmLogout = false })
+                        TideGhostButton(text = "确认退出", danger = true, onClick = { logout() })
+                    }
+                } else {
+                    TideGhostButton(
+                        text = "退出登录",
+                        danger = true,
+                        onClick = { confirmLogout = true },
+                    )
+                }
             }
         }
     }
