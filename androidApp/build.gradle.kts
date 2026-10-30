@@ -6,6 +6,18 @@ plugins {
 val kuiklyVersion = property("kuiklyVersion").toString()
 val apiBaseUrl = providers.gradleProperty("tideApiBaseUrl").get()
 
+// 发布签名只从环境变量读取，密钥与密码不进仓库。
+val releaseStorePath = System.getenv("ANDROID_KEYSTORE_PATH")
+val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD")
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD")
+val hasReleaseSigning = listOf(
+    releaseStorePath,
+    releaseStorePassword,
+    releaseKeyAlias,
+    releaseKeyPassword,
+).all { !it.isNullOrBlank() }
+
 android {
     namespace = "com.tideengine.mobile"
     compileSdk = 34
@@ -24,8 +36,22 @@ android {
         buildConfig = true
     }
 
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseStorePath!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
         release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             // 骨架阶段先关闭 R8，避免 Kuikly KSP 生成类被裁掉；确认稳定后再开启。
             isMinifyEnabled = false
             isShrinkResources = false

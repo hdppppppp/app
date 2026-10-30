@@ -95,4 +95,33 @@ tideApiBaseUrl=https://git.xydaigua.cn
 远程仓库：<https://github.com/hdppppppp/app>
 
 `.github/workflows/android.yml` 在 push / PR / 手动触发时构建 debug APK，
-手动触发时额外构建 release（未签名）。产物通过 Actions artifact 下载。
+手动触发时额外构建**已签名**的 release APK，并用 `apksigner` 校验签名。
+产物通过 Actions artifact 下载（`tide-engine-android-debug` /
+`tide-engine-android-release`）。
+
+## 发布签名
+
+release 签名通过环境变量注入，密钥、密码和 keystore 均不进仓库。
+
+GitHub Actions Secrets：
+
+| Secret | 内容 |
+| --- | --- |
+| `ANDROID_KEYSTORE_BASE64` | PKCS12 keystore 的 base64（单行，无换行） |
+| `ANDROID_KEYSTORE_PASSWORD` | keystore 密码 |
+| `ANDROID_KEY_ALIAS` | 密钥别名 `tide-engine` |
+| `ANDROID_KEY_PASSWORD` | 密钥密码（与 keystore 密码相同） |
+
+本地构建签名版时设置同名环境变量后执行：
+
+```bash
+export ANDROID_KEYSTORE_PATH=/path/to/tide-engine-release.jks
+export ANDROID_KEYSTORE_PASSWORD=...
+export ANDROID_KEY_ALIAS=tide-engine
+export ANDROID_KEY_PASSWORD=...
+gradle :androidApp:assembleRelease
+```
+
+未设置这些变量时 release 构建产物为未签名，便于临时验证。当前签名密钥备份在
+`C:\Users\kiwi\.android\tide-engine-release.jks`（密码在同目录
+`tide-engine-release.pass`），**必须离线备份**：丢失后无法覆盖安装升级。
