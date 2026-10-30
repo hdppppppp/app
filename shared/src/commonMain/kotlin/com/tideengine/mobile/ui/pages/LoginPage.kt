@@ -19,6 +19,8 @@ import com.tencent.kuikly.compose.material3.TextField
 import com.tencent.kuikly.compose.setContent
 import com.tencent.kuikly.compose.ui.Modifier
 import com.tencent.kuikly.compose.ui.text.font.FontWeight
+import com.tencent.kuikly.compose.ui.text.input.PasswordVisualTransformation
+import com.tencent.kuikly.compose.ui.text.input.TextFieldValue
 import com.tencent.kuikly.compose.ui.unit.dp
 import com.tencent.kuikly.compose.ui.unit.sp
 import com.tencent.kuikly.core.annotations.Page
@@ -51,14 +53,14 @@ class LoginPage : ComposeContainer() {
 
 @Composable
 private fun LoginScreen(onAuthenticated: () -> Unit) {
-    var identifier by remember { mutableStateOf("") }
-    var password by remember { mutableStateOf("") }
+    var identifier by remember { mutableStateOf(TextFieldValue("")) }
+    var password by remember { mutableStateOf(TextFieldValue("")) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun submit() {
-        if (identifier.isBlank() || password.isBlank()) {
+        if (identifier.text.isBlank() || password.text.isBlank()) {
             error = "请输入账号和密码"
             return
         }
@@ -71,7 +73,7 @@ private fun LoginScreen(onAuthenticated: () -> Unit) {
                     error = "客户端尚未初始化，请重启应用"
                     return@launch
                 }
-                val response = ServiceLocator.auth.login(identifier.trim(), password)
+                val response = ServiceLocator.auth.login(identifier.text.trim(), password.text)
                 AppSession.user = response.user
                 onAuthenticated()
             } catch (e: ApiException) {
@@ -124,6 +126,7 @@ private fun LoginScreen(onAuthenticated: () -> Unit) {
                     onValueChange = { password = it },
                     label = { Text("密码") },
                     singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                 )
 
