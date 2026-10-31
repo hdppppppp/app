@@ -18,7 +18,6 @@ import io.github.suqi8.coui.kmp.basic.NavigationBar
 import io.github.suqi8.coui.kmp.basic.NavigationBarItem
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SmallTopAppBar
-import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.basic.TextButton
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Contacts
@@ -58,13 +57,12 @@ fun HomePage(
                 actions = {
                     if (tab != HomeTab.Profile) {
                         TextButton(
+                            text = "刷新",
                             onClick = { refreshKey += 1 },
                             colors = ButtonDefaults.textButtonColorsBorderless(
                                 textColor = scheme.primary,
                             ),
-                        ) {
-                            Text("刷新")
-                        }
+                        )
                     }
                 },
             )

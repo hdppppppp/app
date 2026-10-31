@@ -78,6 +78,7 @@ fun TideGhostButton(
 ) {
     val scheme = COUITheme.colorScheme
     TextButton(
+        text = text,
         onClick = onClick,
         modifier = modifier,
         enabled = enabled,
@@ -87,9 +88,11 @@ fun TideGhostButton(
             disabledColor = scheme.surfaceContainerHigh,
             disabledTextColor = scheme.disabledOnSurface,
         ),
-    ) {
-        Text(text = text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-    }
+        textStyle = COUITheme.textStyles.button.copy(
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Medium,
+        ),
+    )
 }
 
 @Composable
