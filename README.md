@@ -88,6 +88,7 @@ tideApiBaseUrl=http://192.168.31.17:3100
 - `androidApp` release 暂时关闭 R8，确认 COUI / Compose 资源不被裁剪后再开启。
 - Manifest 开启 `usesCleartextTraffic` 以兼容可能的内网 http 服务；生产应改为
   `network_security_config` 白名单。
+- PVM2 加固已接入手动 workflow，但尚未真机验证；上游 KMP/Ktor 兼容问题未关闭。
 
 ## 安全
 
@@ -104,6 +105,33 @@ tideApiBaseUrl=http://192.168.31.17:3100
 手动触发时额外构建**已签名**的 release APK，并用 `apksigner` 校验签名。
 产物通过 Actions artifact 下载（`tide-engine-android-debug` /
 `tide-engine-android-release`）。
+
+### PVM2 加固（手动）
+
+手动触发时选择 `protect=business`（业务层全量）或 `protect=canary`（仅
+`auth/`、`ApiClient`、`ApiException`），`protect-pvm2` job 会在签名 release APK
+上执行 [XopProtector](https://github.com/xopJack/XopProtector) 的 DEX 加密、RASP
+与 PVM2 真 VMP，产物单独上传（`tide-engine-android-pvm2-*`），不影响普通 release。
+
+- VMP 范围：`auth/`、`api/ApiClient`、`api/ApiException`；`business` 另加 `data/`。
+- 排除：`ui/`（Compose 热路径）、`api/dto/`（`@Serializable` serializer）、
+  `MobileBootstrap` / `ServiceLocator` / `Application` / `Activity`（启动链与
+  Manifest 组件）。
+- `risk_profile=baseline` 不检测 root/模拟器；`strict` 开启检测。`rasp_action`
+  为 0/1/2 时分别是记录/降级/阻断。
+- 上游固定到 commit `e8a1526`（0.7.9 内容）。上游 `0.7.9` tag 实际指向前一提交，
+  不要按 tag 拉取。
+- 首次建议先跑 `protect=canary`，确认 `PVM2 admission` 的 success 数和
+  `size_report` 后再切 `business`。
+
+**许可证**：XopProtector 使用 Apache License 2.0（`Apache-2.0`），其 shell 会嵌入
+加固后的 APK。CI 会把上游 `LICENSE` 与 `NOTICE` 复制到产物目录；再分发加固 APK
+时必须一并保留。第三方组件与固定提交见
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md)。
+
+已知限制：上游存在 KMP/Ktor 兼容问题（issue #25）；DEX 运行期解密会落盘
+`code_cache`（issue #28）；暂不支持 Android 17。上线前必须在真机跑通登录、任务、
+游戏容器全流程。
 
 ## 发布签名
 
