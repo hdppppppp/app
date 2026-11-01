@@ -157,6 +157,17 @@ jobs:
         with:
           packages: "platforms;android-34 build-tools;34.0.0 cmake;3.22.1 ndk;25.1.8937393 ndk;27.2.12479018"
 
+      - name: Keep only NDKs required by XopProtector
+        run: |
+          for dir in "$ANDROID_HOME"/ndk/*; do
+            [ -d "$dir" ] || continue
+            case "$(basename "$dir")" in
+              25.1.8937393|27.2.12479018) ;;
+              *) echo "Removing preinstalled NDK $(basename "$dir")"; sudo rm -rf "$dir" ;;
+            esac
+          done
+          ls "$ANDROID_HOME/ndk"
+
       - name: Set up Gradle 8.7 for XopProtector
         uses: gradle/actions/setup-gradle@v4
         with:
