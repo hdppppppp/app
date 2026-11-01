@@ -111,6 +111,7 @@ private fun TideAppContent(onOpenManager: (String) -> Unit) {
                 checking = false
             },
             onOpenManager = onOpenManager,
+            onUserUpdated = { user = it },
         )
     }
 }

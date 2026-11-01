@@ -65,8 +65,18 @@ class ApiClient(
     suspend inline fun <reified B : Any, reified T> patchJson(path: String, body: B): T =
         send(HttpMethod.Patch, path, emptyMap(), json.encodeToString(body))
 
+    suspend inline fun <reified B : Any, reified T> putJson(path: String, body: B): T =
+        send(HttpMethod.Put, path, emptyMap(), json.encodeToString(body))
+
     suspend inline fun <reified T> delete(path: String): T =
         send(HttpMethod.Delete, path, emptyMap(), null)
+
+    /** 头像等静态资源以二进制下发，不走 JSON 反序列化；失败返回 null 由调用方回退。 */
+    suspend fun fetchBytes(path: String): ByteArray? {
+        val response = execute(HttpMethod.Get, path, emptyMap(), null)
+        if (response.status.value !in 200..299) return null
+        return runCatching { response.body<ByteArray>() }.getOrNull()
+    }
 
     @PublishedApi
     internal suspend inline fun <reified T> send(

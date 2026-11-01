@@ -39,6 +39,7 @@ dependencies {
 
     implementation(libs.coui.ui)
     implementation(libs.coui.icons)
+    implementation(libs.androidx.activity.compose)
 
     implementation(libs.ktor.client.core)
     implementation(libs.ktor.client.okhttp)

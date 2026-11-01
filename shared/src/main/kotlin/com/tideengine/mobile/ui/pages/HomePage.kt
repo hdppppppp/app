@@ -38,6 +38,7 @@ fun HomePage(
     user: PublicUser,
     onSessionExpired: () -> Unit,
     onOpenManager: (String) -> Unit,
+    onUserUpdated: (PublicUser) -> Unit = {},
 ) {
     val scheme = COUITheme.colorScheme
     var tab by remember { mutableStateOf(HomeTab.Tasks) }
@@ -108,6 +109,7 @@ fun HomePage(
 
                 HomeTab.Profile -> ProfileTab(
                     user = user,
+                    onUserUpdated = onUserUpdated,
                     onSessionExpired = onSessionExpired,
                     onLoggedOut = onSessionExpired,
                 )

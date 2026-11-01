@@ -1,7 +1,10 @@
 package com.tideengine.mobile.ui.pages
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -19,6 +22,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -28,6 +32,7 @@ import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.api.dto.UserRole
 import com.tideengine.mobile.api.dto.UserStatus
+import com.tideengine.mobile.ui.components.AvatarImage
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideDivider
 import com.tideengine.mobile.ui.components.TideErrorBanner
@@ -36,6 +41,7 @@ import com.tideengine.mobile.ui.components.TideNoticeBanner
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.TideStatRow
 import com.tideengine.mobile.ui.components.TideTag
+import com.tideengine.mobile.ui.components.createAvatarDataUrl
 import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.components.formatIsoDate
 import io.github.suqi8.coui.kmp.basic.Surface
@@ -49,11 +55,13 @@ import kotlinx.coroutines.launch
 @Composable
 fun ProfileTab(
     user: PublicUser,
+    onUserUpdated: (PublicUser) -> Unit,
     onSessionExpired: () -> Unit,
     onLoggedOut: () -> Unit,
 ) {
     val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     var currentPassword by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(""))
@@ -65,6 +73,19 @@ fun ProfileTab(
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     var confirmLogout by remember { mutableStateOf(false) }
+
+    var avatarBusy by remember { mutableStateOf(false) }
+    var confirmResetAvatar by remember { mutableStateOf(false) }
+    var avatarError by remember { mutableStateOf<String?>(null) }
+    var avatarNotice by remember { mutableStateOf<String?>(null) }
+
+    val pickAvatarImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch { uploadAvatar(uri) }
+        }
+    }
 
     fun changePassword() {
         if (currentPassword.text.isBlank() || newPassword.text.length < 8) {
@@ -99,6 +120,57 @@ fun ProfileTab(
         onLoggedOut()
     }
 
+    fun pickAvatar() {
+        if (avatarBusy) return
+        pickAvatarImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    }
+
+    suspend fun uploadAvatar(uri: Uri) {
+        avatarBusy = true
+        avatarError = null
+        avatarNotice = null
+        confirmResetAvatar = false
+        try {
+            val avatar = createAvatarDataUrl(context, uri)
+            val updated = ServiceLocator.auth.updateAvatar(avatar)
+            avatarNotice = "头像已更新"
+            onUserUpdated(updated)
+        } catch (throwable: Throwable) {
+            if (throwable is CancellationException) throw throwable
+            if (throwable is ApiException && throwable.isUnauthorized) {
+                onSessionExpired()
+            } else {
+                avatarError = errorText(throwable)
+            }
+        } finally {
+            avatarBusy = false
+        }
+    }
+
+    fun resetAvatar() {
+        if (avatarBusy) return
+        confirmResetAvatar = false
+        avatarError = null
+        avatarNotice = null
+        avatarBusy = true
+        scope.launch {
+            try {
+                val updated = ServiceLocator.auth.resetAvatar()
+                avatarNotice = "已恢复默认头像"
+                onUserUpdated(updated)
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                if (throwable is ApiException && throwable.isUnauthorized) {
+                    onSessionExpired()
+                } else {
+                    avatarError = errorText(throwable)
+                }
+            } finally {
+                avatarBusy = false
+            }
+        }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
@@ -117,13 +189,16 @@ fun ProfileTab(
                         contentColor = scheme.onPrimary,
                         shadowElevation = 0.dp,
                     ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Text(
-                                text = user.displayName.take(1).uppercase(),
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.Bold,
-                            )
-                        }
+                        AvatarImage(
+                            url = user.avatarUrl,
+                            fallback = {
+                                Text(
+                                    text = user.displayName.take(1).uppercase(),
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            },
+                        )
                     }
 
                     Column(modifier = Modifier.weight(1f)) {
@@ -147,6 +222,47 @@ fun ProfileTab(
                 TideStatRow(label = "角色", value = user.role.label())
                 TideStatRow(label = "状态", value = user.status.label())
                 TideStatRow(label = "上次登录", value = formatIsoDate(user.lastLoginAt))
+
+                TideDivider()
+
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TideGhostButton(
+                        text = if (user.avatarUrl.isNullOrEmpty()) "上传头像" else "更换头像",
+                        enabled = !avatarBusy,
+                        onClick = { pickAvatar() },
+                    )
+                    if (!user.avatarUrl.isNullOrEmpty()) {
+                        TideGhostButton(
+                            text = "恢复默认",
+                            enabled = !avatarBusy,
+                            danger = true,
+                            onClick = { confirmResetAvatar = !confirmResetAvatar },
+                        )
+                    }
+                }
+                if (confirmResetAvatar) {
+                    Text(
+                        text = "确认恢复默认头像？",
+                        color = scheme.error,
+                        fontSize = 12.sp,
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        TideGhostButton(text = "取消", onClick = { confirmResetAvatar = false })
+                        TideGhostButton(
+                            text = "确认恢复",
+                            danger = true,
+                            enabled = !avatarBusy,
+                            onClick = { resetAvatar() },
+                        )
+                    }
+                }
+                Text(
+                    text = "支持 JPG、PNG 或 WebP，保存前会自动裁切为正方形并压缩。",
+                    color = scheme.onSurfaceVariantSummary,
+                    fontSize = 12.sp,
+                )
+                avatarError?.let { TideErrorBanner(message = it) }
+                avatarNotice?.let { TideNoticeBanner(message = it) }
             }
         }
 

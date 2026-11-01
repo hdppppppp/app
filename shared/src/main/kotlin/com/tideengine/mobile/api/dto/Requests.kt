@@ -29,6 +29,9 @@ data class UpdateProfileRequest(
 )
 
 @Serializable
+data class UpdateAvatarRequest(val image: String)
+
+@Serializable
 data class TaskUpsertRequest(
     val name: String,
     val description: String? = null,
