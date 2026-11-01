@@ -174,9 +174,12 @@ jobs:
 
       - name: Build XopProtector packer and shell
         working-directory: ${{ runner.temp }}/xop
-        # 上游 gradle.properties 的 unimp.sdk.libs 是 Windows 路径，Linux 上会被
-        # file() 当 URI 解析而报错；空值覆盖后 settings.gradle.kts 会跳过 :unimp-host。
-        run: gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --no-daemon --stacktrace
+        # 上游 gradle.properties 和 settings.gradle.kts 都硬编码了 Windows 盘符路径，
+        # Linux 上会被 file() 当 URL 解析而报错。空值覆盖属性，并删掉盘符候选，
+        # 保留相对路径候选；两者都不存在时 settings 会跳过 :unimp-host。
+        run: |
+          sed -i '/E:\/Android\/SDK-Android@5.14-20260706\/SDK\/libs/d' settings.gradle.kts
+          gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --no-daemon --stacktrace
 
       - name: Restore signing keystore
         env:
