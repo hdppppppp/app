@@ -137,6 +137,9 @@ tideApiBaseUrl=http://192.168.31.17:3100
   `AuthRepository.login/changePassword/updateAvatar`、
   `GameAccountRepository.updateSwitch`、`OperationLogRepository.list`、
   `TaskRepository.list/executions`。
+- 同日在 Android 14（API 34，x86_64）模拟器安装 `business` APK：XopProtector shell
+  正常替换 `TideApplication`、解密 3 个 DEX，登录页正常渲染；模拟器 System UI 在
+  软件渲染下出现 ANR，未完成登录请求、任务和游戏容器验证。
 
 **许可证**：XopProtector 使用 Apache License 2.0（`Apache-2.0`），其 shell 会嵌入
 加固后的 APK。CI 会把上游 `LICENSE` 与 `NOTICE` 复制到产物目录；再分发加固 APK
