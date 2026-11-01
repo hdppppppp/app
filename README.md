@@ -88,7 +88,8 @@ tideApiBaseUrl=http://192.168.31.17:3100
 - `androidApp` release 暂时关闭 R8，确认 COUI / Compose 资源不被裁剪后再开启。
 - Manifest 开启 `usesCleartextTraffic` 以兼容可能的内网 http 服务；生产应改为
   `network_security_config` 白名单。
-- PVM2 加固已接入手动 workflow，但尚未真机验证；上游 KMP/Ktor 兼容问题未关闭。
+- PVM2 加固已接入手动 workflow，canary / business 已在 CI 跑通；尚未真机验证；
+  上游 KMP/Ktor 兼容问题未关闭。
 
 ## 安全
 
@@ -123,6 +124,19 @@ tideApiBaseUrl=http://192.168.31.17:3100
   不要按 tag 拉取。
 - 首次建议先跑 `protect=canary`，确认 `PVM2 admission` 的 success 数和
   `size_report` 后再切 `business`。
+- 构建机预装的 NDK 27.3 / 29 / 30 会让 `findNdk27Plus` 选中 NDK 30，其未裁剪的
+  `libc++_shared.so` 使每个 64 位 ABI 增加约 9MB；workflow 只保留 AGP 默认的
+  25.1 和满足 16KB 对齐的 27.2，强制使用 27.2。
+
+2026-11-01 的 CI 结果（`risk_profile=baseline`、`rasp_action=1`）：
+
+- `canary`：PVM2 38/38（100%），按 `size_report` 输入 12.76MB → 输出 15.89MB
+  （+3.12MB）。
+- `business`：PVM2 85/92（92.4%），按 `size_report` 输入 12.76MB → 输出 15.96MB
+  （+3.20MB）；7 个超过 PVM2 体积上限的方法回退为 DEX 加密，未进入 VMP：
+  `AuthRepository.login/changePassword/updateAvatar`、
+  `GameAccountRepository.updateSwitch`、`OperationLogRepository.list`、
+  `TaskRepository.list/executions`。
 
 **许可证**：XopProtector 使用 Apache License 2.0（`Apache-2.0`），其 shell 会嵌入
 加固后的 APK。CI 会把上游 `LICENSE` 与 `NOTICE` 复制到产物目录；再分发加固 APK
