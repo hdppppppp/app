@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
@@ -87,7 +88,7 @@ fun AvatarImage(
             val bitmap = bytes?.let { withContext(Dispatchers.Default) { decode(it) } }
             value = if (bitmap != null) {
                 AvatarBitmapCache.put(absolute, bitmap)
-                AvatarUiState.Success(bitmap)
+                AvatarUiState.Success(bitmap.asImageBitmap())
             } else {
                 AvatarUiState.Failure
             }

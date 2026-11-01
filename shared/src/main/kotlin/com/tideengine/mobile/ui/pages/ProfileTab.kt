@@ -79,14 +79,6 @@ fun ProfileTab(
     var avatarError by remember { mutableStateOf<String?>(null) }
     var avatarNotice by remember { mutableStateOf<String?>(null) }
 
-    val pickAvatarImage = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri != null) {
-            scope.launch { uploadAvatar(uri) }
-        }
-    }
-
     fun changePassword() {
         if (currentPassword.text.isBlank() || newPassword.text.length < 8) {
             error = "请填写当前密码，新密码至少 8 位"
@@ -120,11 +112,6 @@ fun ProfileTab(
         onLoggedOut()
     }
 
-    fun pickAvatar() {
-        if (avatarBusy) return
-        pickAvatarImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    }
-
     suspend fun uploadAvatar(uri: Uri) {
         avatarBusy = true
         avatarError = null
@@ -145,6 +132,19 @@ fun ProfileTab(
         } finally {
             avatarBusy = false
         }
+    }
+
+    val pickAvatarImage = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch { uploadAvatar(uri) }
+        }
+    }
+
+    fun pickAvatar() {
+        if (avatarBusy) return
+        pickAvatarImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
     }
 
     fun resetAvatar() {
