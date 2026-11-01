@@ -174,7 +174,9 @@ jobs:
 
       - name: Build XopProtector packer and shell
         working-directory: ${{ runner.temp }}/xop
-        run: gradle :packer:jar exportShellFiles --no-daemon --stacktrace
+        # 上游 gradle.properties 的 unimp.sdk.libs 是 Windows 路径，Linux 上会被
+        # file() 当 URI 解析而报错；空值覆盖后 settings.gradle.kts 会跳过 :unimp-host。
+        run: gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --no-daemon --stacktrace
 
       - name: Restore signing keystore
         env:
