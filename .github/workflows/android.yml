@@ -35,8 +35,10 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  VERSION_CODE: ${{ github.run_number }}
-  VERSION_NAME: "0.1.${{ github.run_number }}"
+  # CI 包使用固定版本号，避免 VERSION_NAME/VERSION_CODE 每次变化导致配置缓存和
+  # dexBuilderRelease 构建缓存失效；对外发布版本由独立流程控制。
+  VERSION_CODE: "1"
+  VERSION_NAME: "0.1.0"
 
 jobs:
   build:
@@ -103,6 +105,8 @@ jobs:
         with:
           gradle-version: "9.6.1"
           cache-read-only: false
+          # release 版本固定后同样可以复用配置缓存；条目按内容哈希独立保存
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Restore signing keystore
         env:
@@ -262,7 +266,7 @@ jobs:
           fi
 
           mkdir -p out
-          OUT="out/tide-engine-${VMP_SCOPE}-${VERSION_NAME}.apk"
+          OUT="out/tide-engine-${VMP_SCOPE}-${VERSION_NAME}-${GITHUB_RUN_NUMBER}.apk"
 
           PREFIXES=(
             "--true-vmp-prefix" "Lcom/tideengine/mobile/auth/"
