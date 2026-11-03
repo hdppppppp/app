@@ -125,11 +125,11 @@ tideApiBaseUrl=http://192.168.31.17:3100
   命中后跳过 NDK/CMake 安装和 XopProtector 的 Gradle 构建，只重新执行加固。
   修改 `XOP_REF`、NDK/CMake/Gradle 版本或缓存内容时，需同步递增 cache key 的
   `-v1` 后缀。
-- 实测（2026-11-03，canary，同一提交）：冷缓存 run `41627735106` 总耗时
-  8m21s；Gradle 依赖/构建缓存命中后 run `41628968519` 为 2m9s；配置
-  `GRADLE_ENCRYPTION_KEY` 后 run `41633683023` 为 1m56s（build 56s /
-  release 71s / protect 39s），日志确认 `Reusing configuration cache.` 且
-  XopProtector 缓存命中。
+- 实测（2026-11-03，canary）：冷缓存 run `41627735106` 总耗时 8m21s；
+  固定 `GRADLE_ENCRYPTION_KEY` 后 run `41633683023` 为 1m56s；固定 release
+  版本后 run `41642886776` 为 1m47s（build 41s / release 58s / protect 44s），
+  debug 与 release 日志均出现 `Reusing configuration cache.`，
+  `dexBuilderRelease` 命中构建缓存，XopProtector 缓存命中。
 
 ### PVM2 加固（手动）
 

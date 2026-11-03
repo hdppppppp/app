@@ -61,7 +61,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-37.0 build-tools;36.0.0 platform-tools"
+          packages: "platforms;android-37.0 build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -98,7 +98,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-37.0 build-tools;36.0.0 platform-tools"
+          packages: "platforms;android-37.0 build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -187,7 +187,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+          packages: "build-tools;34.0.0"
 
       - name: Install XopProtector toolchains
         if: steps.xop-cache.outputs.cache-hit != 'true'
