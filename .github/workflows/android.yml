@@ -42,6 +42,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    env:
+      # debug 包不对外发布，固定版本号才能复用配置缓存与构建缓存
+      VERSION_CODE: "1"
+      VERSION_NAME: "0.1.0-debug"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -61,9 +65,20 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.1"
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          gradle-home-cache-includes: |
+            caches
+            wrapper/dists
+
+      - name: Restore Gradle configuration cache
+        uses: actions/cache@v4
+        continue-on-error: true
+        with:
+          path: .gradle/configuration-cache
+          key: gradle-config-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/*.gradle.kts', '**/gradle.properties', 'gradle/libs.versions.toml', '.github/workflows/android.yml') }}
 
       - name: Build debug APK
-        run: gradle :androidApp:assembleDebug --no-daemon --stacktrace
+        run: gradle :androidApp:assembleDebug --build-cache --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -95,6 +110,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.1"
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            wrapper/dists
 
       - name: Restore signing keystore
         env:
@@ -120,7 +139,7 @@ jobs:
               exit 1
             fi
           done
-          gradle :androidApp:assembleRelease --no-daemon --stacktrace
+          gradle :androidApp:assembleRelease --build-cache --stacktrace
 
       - name: Verify APK signature
         run: |
@@ -139,6 +158,8 @@ jobs:
     needs: release
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
     steps:
       - name: Download signed release APK
         uses: actions/download-artifact@v4
@@ -152,12 +173,37 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Set up Android SDK for XopProtector
+      - name: Fetch XopProtector at pinned commit
+        run: |
+          git init "$RUNNER_TEMP/xop"
+          git -C "$RUNNER_TEMP/xop" remote add origin https://github.com/xopJack/XopProtector.git
+          git -C "$RUNNER_TEMP/xop" fetch --depth 1 origin "$XOP_REF"
+          git -C "$RUNNER_TEMP/xop" checkout --detach FETCH_HEAD
+          git -C "$RUNNER_TEMP/xop" log -1 --format='XopProtector %H %s'
+
+      - name: Restore XopProtector build cache
+        id: xop-cache
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: |
+            ${{ runner.temp }}/xop/executable
+            ${{ runner.temp }}/xop/packer/build/libs
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v1
+
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-34 build-tools;34.0.0 cmake;3.22.1 ndk;25.1.8937393 ndk;27.2.12479018"
+          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+
+      - name: Install XopProtector toolchains
+        if: steps.xop-cache.outputs.cache-hit != 'true'
+        run: |
+          # 用进程替换喂 y，避免 pipefail 把 yes 的 SIGPIPE 当成失败
+          sdkmanager "cmake;3.22.1" "ndk;25.1.8937393" "ndk;27.2.12479018" < <(yes)
 
       - name: Keep only NDKs required by XopProtector
+        if: steps.xop-cache.outputs.cache-hit != 'true'
         run: |
           for dir in "$ANDROID_HOME"/ndk/*; do
             [ -d "$dir" ] || continue
@@ -169,28 +215,34 @@ jobs:
           ls "$ANDROID_HOME/ndk"
 
       - name: Set up Gradle 8.7 for XopProtector
+        if: steps.xop-cache.outputs.cache-hit != 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.7"
-
-      - name: Fetch XopProtector at pinned commit
-        env:
-          XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
-        run: |
-          git init "$RUNNER_TEMP/xop"
-          git -C "$RUNNER_TEMP/xop" remote add origin https://github.com/xopJack/XopProtector.git
-          git -C "$RUNNER_TEMP/xop" fetch --depth 1 origin "$XOP_REF"
-          git -C "$RUNNER_TEMP/xop" checkout --detach FETCH_HEAD
-          git -C "$RUNNER_TEMP/xop" log -1 --format='XopProtector %H %s'
+          cache-read-only: false
+          gradle-home-cache-includes: |
+            caches
+            wrapper/dists
 
       - name: Build XopProtector packer and shell
+        if: steps.xop-cache.outputs.cache-hit != 'true'
         working-directory: ${{ runner.temp }}/xop
         # 上游 gradle.properties 和 settings.gradle.kts 都硬编码了 Windows 盘符路径，
         # Linux 上会被 file() 当 URL 解析而报错。空值覆盖属性，并删掉盘符候选，
         # 保留相对路径候选；两者都不存在时 settings 会跳过 :unimp-host。
         run: |
           sed -i '/E:\/Android\/SDK-Android@5.14-20260706\/SDK\/libs/d' settings.gradle.kts
-          gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --no-daemon --stacktrace
+          gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --build-cache --stacktrace
+
+      - name: Save XopProtector build cache
+        if: steps.xop-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: |
+            ${{ runner.temp }}/xop/executable
+            ${{ runner.temp }}/xop/packer/build/libs
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v1
 
       - name: Restore signing keystore
         env:

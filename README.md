@@ -107,6 +107,20 @@ tideApiBaseUrl=http://192.168.31.17:3100
 产物通过 Actions artifact 下载（`tide-engine-android-debug` /
 `tide-engine-android-release`）。
 
+### 构建缓存
+
+- Gradle 用户目录缓存（`caches`、`wrapper/dists`）由 `gradle/actions/setup-gradle`
+  读写；PR 上只读，避免缓存污染。首次运行仍会下载 Gradle 发行版。
+- `build` job 把 debug 版本固定为 `0.1.0-debug`（`VERSION_CODE=1`），并把
+  `.gradle/configuration-cache` 单独缓存；构建脚本、`gradle.properties`、
+  `libs.versions.toml` 或 workflow 变化时缓存自动失效。
+- `release` job 的版本号仍随 run number 变化，但会复用 Gradle 构建缓存，
+  共享模块的编译结果不必每次重算。
+- XopProtector 的 packer jar 与 shell 文件按固定 commit 和工具链版本缓存；
+  命中后跳过 NDK/CMake 安装和 XopProtector 的 Gradle 构建，只重新执行加固。
+  修改 `XOP_REF`、NDK/CMake/Gradle 版本或缓存内容时，需同步递增 cache key 的
+  `-v1` 后缀。
+
 ### PVM2 加固（手动）
 
 手动触发时选择 `protect=business`（业务层全量）或 `protect=canary`（仅
