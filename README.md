@@ -102,10 +102,11 @@ tideApiBaseUrl=http://192.168.31.17:3100
 
 远程仓库：<https://github.com/hdppppppp/app>
 
-`.github/workflows/android.yml` 在 push / PR / 手动触发时构建 debug APK，
-手动触发时额外构建**已签名**的 release APK，并用 `apksigner` 校验签名。
+`.github/workflows/android.yml` 在 push / PR / `protect=none` 的手动触发时构建
+debug APK；手动触发时构建**已签名**的 release APK，选择加固范围后在同一个
+`release` job 内继续执行 XopProtector，并用 `apksigner` 校验签名。
 产物通过 Actions artifact 下载（`tide-engine-android-debug` /
-`tide-engine-android-release`）。
+`tide-engine-android-release` / `tide-engine-android-pvm2-*`）。
 
 ### 构建缓存
 
@@ -123,18 +124,20 @@ tideApiBaseUrl=http://192.168.31.17:3100
   这会按预期使缓存失效。
 - XopProtector 的 packer jar 与 shell 文件按固定 commit 和工具链版本缓存；
   命中后跳过 NDK/CMake 安装和 XopProtector 的 Gradle 构建，只重新执行加固。
+  加固步骤与 release 共用同一个 runner、workspace、JDK 和 Android SDK；仅在
+  Xop 缓存未命中时才用 XopProtector 自带 wrapper 下载 Gradle 8.7 构建。
   修改 `XOP_REF`、NDK/CMake/Gradle 版本或缓存内容时，需同步递增 cache key 的
-  `-v1` 后缀。
+  `-v2` 后缀。
 - 实测（2026-11-03，canary）：冷缓存 run `41627735106` 总耗时 8m21s；
   固定 `GRADLE_ENCRYPTION_KEY` 后 run `41633683023` 为 1m56s；固定 release
-  版本后 run `41642886776` 为 1m47s（build 41s / release 58s / protect 44s），
-  debug 与 release 日志均出现 `Reusing configuration cache.`，
+  版本并精简 SDK 后 run `41643383298` 为 1m34s（build 52s / release 53s /
+  protect 36s），debug 与 release 日志均出现 `Reusing configuration cache.`，
   `dexBuilderRelease` 命中构建缓存，XopProtector 缓存命中。
 
 ### PVM2 加固（手动）
 
 手动触发时选择 `protect=business`（业务层全量）或 `protect=canary`（仅
-`auth/`、`ApiClient`、`ApiException`），`protect-pvm2` job 会在签名 release APK
+`auth/`、`ApiClient`、`ApiException`），`release` job 会在签名 release APK
 上执行 [XopProtector](https://github.com/xopJack/XopProtector) 的 DEX 加密、RASP
 与 PVM2 真 VMP，产物单独上传（`tide-engine-android-pvm2-*`），不影响普通 release。
 

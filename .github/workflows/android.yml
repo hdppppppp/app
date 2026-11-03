@@ -42,6 +42,8 @@ env:
 
 jobs:
   build:
+    # 手动加固 run 不需要 debug 包，避免与 release/protect 争抢 runner 和缓存带宽
+    if: github.event_name != 'workflow_dispatch' || inputs.protect == 'none'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -84,7 +86,9 @@ jobs:
   release:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    env:
+      XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -146,27 +150,10 @@ jobs:
           path: androidApp/build/outputs/apk/release/*.apk
           if-no-files-found: error
 
-  protect-pvm2:
-    if: github.event_name == 'workflow_dispatch' && inputs.protect != 'none'
-    needs: release
-    runs-on: ubuntu-latest
-    timeout-minutes: 90
-    env:
-      XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
-    steps:
-      - name: Download signed release APK
-        uses: actions/download-artifact@v4
-        with:
-          name: tide-engine-android-release-${{ github.run_number }}
-          path: artifact
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "17"
-
+      # 加固步骤复用 release job 的 workspace、JDK 和 Android SDK，避免第二次
+      # runner 启动、artifact 上传/下载和 build-tools 安装。
       - name: Fetch XopProtector at pinned commit
+        if: inputs.protect != 'none'
         run: |
           git init "$RUNNER_TEMP/xop"
           git -C "$RUNNER_TEMP/xop" remote add origin https://github.com/xopJack/XopProtector.git
@@ -175,6 +162,7 @@ jobs:
           git -C "$RUNNER_TEMP/xop" log -1 --format='XopProtector %H %s'
 
       - name: Restore XopProtector build cache
+        if: inputs.protect != 'none'
         id: xop-cache
         uses: actions/cache/restore@v4
         continue-on-error: true
@@ -182,21 +170,16 @@ jobs:
           path: |
             ${{ runner.temp }}/xop/executable
             ${{ runner.temp }}/xop/packer/build/libs
-          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v1
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: "build-tools;34.0.0"
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v2
 
       - name: Install XopProtector toolchains
-        if: steps.xop-cache.outputs.cache-hit != 'true'
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
         run: |
           # 用进程替换喂 y，避免 pipefail 把 yes 的 SIGPIPE 当成失败
           sdkmanager "cmake;3.22.1" "ndk;25.1.8937393" "ndk;27.2.12479018" < <(yes)
 
       - name: Keep only NDKs required by XopProtector
-        if: steps.xop-cache.outputs.cache-hit != 'true'
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
         run: |
           for dir in "$ANDROID_HOME"/ndk/*; do
             [ -d "$dir" ] || continue
@@ -207,48 +190,31 @@ jobs:
           done
           ls "$ANDROID_HOME/ndk"
 
-      - name: Set up Gradle 8.7 for XopProtector
-        if: steps.xop-cache.outputs.cache-hit != 'true'
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.7"
-          cache-read-only: false
-          gradle-home-cache-includes: |
-            caches
-            wrapper/dists
-
       - name: Build XopProtector packer and shell
-        if: steps.xop-cache.outputs.cache-hit != 'true'
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
         working-directory: ${{ runner.temp }}/xop
         # 上游 gradle.properties 和 settings.gradle.kts 都硬编码了 Windows 盘符路径，
         # Linux 上会被 file() 当 URL 解析而报错。空值覆盖属性，并删掉盘符候选，
         # 保留相对路径候选；两者都不存在时 settings 会跳过 :unimp-host。
+        # 同一个 job 内 setup-gradle 只执行第一次，因此这里用仓库 wrapper 并切到 8.7。
         run: |
+          sed -i 's|gradle-8.2-bin.zip|gradle-8.7-bin.zip|' gradle/wrapper/gradle-wrapper.properties
           sed -i '/E:\/Android\/SDK-Android@5.14-20260706\/SDK\/libs/d' settings.gradle.kts
-          gradle :packer:jar exportShellFiles -Punimp.sdk.libs= --build-cache --stacktrace
+          chmod +x gradlew
+          ./gradlew :packer:jar exportShellFiles -Punimp.sdk.libs= --build-cache --stacktrace
 
       - name: Save XopProtector build cache
-        if: steps.xop-cache.outputs.cache-hit != 'true'
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         continue-on-error: true
         with:
           path: |
             ${{ runner.temp }}/xop/executable
             ${{ runner.temp }}/xop/packer/build/libs
-          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v1
-
-      - name: Restore signing keystore
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-        run: |
-          if [ -z "$ANDROID_KEYSTORE_BASE64" ]; then
-            echo "::error::ANDROID_KEYSTORE_BASE64 未配置"
-            exit 1
-          fi
-          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
-          chmod 600 "$RUNNER_TEMP/release.jks"
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v2
 
       - name: Run XopProtector (DEX encrypt + RASP + PVM2)
+        if: inputs.protect != 'none'
         env:
           VMP_SCOPE: ${{ inputs.protect }}
           RISK_PROFILE: ${{ inputs.risk_profile }}
@@ -259,7 +225,7 @@ jobs:
         run: |
           set -euo pipefail
           JAR=$(find "$RUNNER_TEMP/xop/packer/build/libs" -maxdepth 1 -name 'protector-packer-*.jar' ! -name '*-sources.jar' -print -quit)
-          APK=$(find artifact -name '*.apk' -print -quit)
+          APK=$(find androidApp/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
           if [ -z "$JAR" ] || [ -z "$APK" ]; then
             echo "::error::找不到 packer jar 或输入 APK"
             exit 1
@@ -312,11 +278,12 @@ jobs:
           fi
 
       - name: Verify protected APK signature
+        if: inputs.protect != 'none'
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs out/*.apk
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs out/*.apk
 
       - name: Upload protected APK and reports
-        if: always()
+        if: always() && inputs.protect != 'none'
         uses: actions/upload-artifact@v4
         with:
           name: tide-engine-android-pvm2-${{ inputs.protect }}-${{ github.run_number }}
