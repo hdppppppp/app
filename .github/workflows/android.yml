@@ -66,16 +66,8 @@ jobs:
         with:
           gradle-version: "9.6.1"
           cache-read-only: ${{ github.event_name == 'pull_request' }}
-          gradle-home-cache-includes: |
-            caches
-            wrapper/dists
-
-      - name: Restore Gradle configuration cache
-        uses: actions/cache@v4
-        continue-on-error: true
-        with:
-          path: .gradle/configuration-cache
-          key: gradle-config-${{ runner.os }}-${{ hashFiles('**/*.gradle', '**/*.gradle.kts', '**/gradle.properties', 'gradle/libs.versions.toml', '.github/workflows/android.yml') }}
+          # 固定密钥才能跨 runner 解密 configuration-cache
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Build debug APK
         run: gradle :androidApp:assembleDebug --build-cache --stacktrace
@@ -111,9 +103,6 @@ jobs:
         with:
           gradle-version: "9.6.1"
           cache-read-only: false
-          gradle-home-cache-includes: |
-            caches
-            wrapper/dists
 
       - name: Restore signing keystore
         env:

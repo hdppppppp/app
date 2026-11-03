@@ -109,13 +109,15 @@ tideApiBaseUrl=http://192.168.31.17:3100
 
 ### 构建缓存
 
-- Gradle 用户目录缓存（`caches`、`wrapper/dists`）由 `gradle/actions/setup-gradle`
-  读写；PR 上只读，避免缓存污染。首次运行仍会下载 Gradle 发行版。
-- `build` job 把 debug 版本固定为 `0.1.0-debug`（`VERSION_CODE=1`），并把
-  `.gradle/configuration-cache` 单独缓存；构建脚本、`gradle.properties`、
-  `libs.versions.toml` 或 workflow 变化时缓存自动失效。
-- `release` job 的版本号仍随 run number 变化，但会复用 Gradle 构建缓存，
-  共享模块的编译结果不必每次重算。
+- Gradle 用户目录缓存（依赖、构建缓存）和 Gradle 发行版由
+  `gradle/actions/setup-gradle` 自动缓存；PR 上只读，避免缓存污染。
+- `build` job 把 debug 版本固定为 `0.1.0-debug`（`VERSION_CODE=1`），并启用
+  configuration cache。configuration cache 由 `setup-gradle` 随 Gradle 用户目录
+  一起保存/恢复，GitHub 仓库需要配置 Secret `GRADLE_ENCRYPTION_KEY`
+  （`openssl rand -base64 16` 生成，必须保持稳定，否则新 runner 无法解密旧条目）。
+  构建脚本、`gradle.properties`、`libs.versions.toml` 变化时 Gradle 会自动重建。
+- `release` job 的版本号仍随 run number 变化，因此不复用 configuration cache，
+  但会复用 Gradle 构建缓存，共享模块的编译结果不必每次重算。
 - XopProtector 的 packer jar 与 shell 文件按固定 commit 和工具链版本缓存；
   命中后跳过 NDK/CMake 安装和 XopProtector 的 Gradle 构建，只重新执行加固。
   修改 `XOP_REF`、NDK/CMake/Gradle 版本或缓存内容时，需同步递增 cache key 的
