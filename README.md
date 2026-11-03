@@ -130,8 +130,9 @@ debug APK；手动触发时构建**已签名**的 release APK，选择加固范�
   `-v2` 后缀。
 - 实测（2026-11-03，canary）：冷缓存 run `41627735106` 总耗时 8m21s；
   固定 `GRADLE_ENCRYPTION_KEY` 后 run `41633683023` 为 1m56s；固定 release
-  版本并精简 SDK 后 run `41643383298` 为 1m34s（build 52s / release 53s /
-  protect 36s），debug 与 release 日志均出现 `Reusing configuration cache.`，
+  版本并精简 SDK 后 run `41643383298` 为 1m34s；合并 release 与加固后
+  run `41644703959`（Xop 缓存重建）为 4m06s，run `41645485800`（缓存命中）
+  为 1m24s。debug 与 release 日志均出现 `Reusing configuration cache.`，
   `dexBuilderRelease` 命中构建缓存，XopProtector 缓存命中。
 
 ### PVM2 加固（手动）
