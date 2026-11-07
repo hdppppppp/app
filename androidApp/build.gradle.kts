@@ -4,6 +4,11 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
+    // 热修复编译期插桩：在 update/、data/（白名单见 build-logic 的
+    // HotfixInstrumentationPlugin）的非合成方法入口插入补丁分发判断。
+    // androidApp 只声明插件并沿用默认白名单；:hotupdate 模块在自己构建脚本里
+    // 应用同一个插件（AGP 9 的 InstrumentationScope.PROJECT 只覆盖本模块类）。
+    id("com.taotao.hotfix")
 }
 
 val apiBaseUrl = providers.gradleProperty("tideApiBaseUrl").get()
@@ -79,6 +84,7 @@ kotlin {
 dependencies {
     implementation(project(":shared"))
     implementation(project(":nativeBridge"))
+    implementation(project(":hotupdate"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
