@@ -1,5 +1,22 @@
 # 第三方组件与许可证
 
+## hot-update（热更新模块与插桩插件）
+
+- 用途：Android 方法级热修复 + 整包更新 / 远程配置。`hotupdate/` 为客户端运行时，
+  `build-logic/` 为编译期插桩插件，均按源码引入并做了宿主适配（白名单、JDK 17、AGP 9.3.1）。
+- 许可证：GPL-3.0（SPDX：`GPL-3.0-only`）。完整文本见 [`hotupdate/LICENSE`](hotupdate/LICENSE)。
+- 上游：<https://github.com/hdppppppp/hot-update>
+- 固定版本：tag `v1.0.0`（commit `f1fe7619dcc0b80d363d446de64276f6102806b5`）。
+- 本项目改动范围（均为接入适配，不改算法与协议）：
+  `build-logic` 去掉 maven-publish 并把 AGP 依赖对齐 9.3.1；插桩白名单改为
+  `com/tideengine/mobile/data/`、`com/tideengine/mobile/update/`；排除
+  `com/tideengine/mobile/TideApplication`；`hotupdate` 构建脚本改用本仓库版本目录
+  与 JDK 17。运行时代码（`com.taotao.music.update` / `com.taotao.music.hotfix`）未改动。
+
+**注意**：GPL-3.0 具有传染性。`hotupdate/` 与 `build-logic/` 的引入意味着本仓库
+（hdppppppp/app）整体按 GPL-3.0 分发时必须同时提供对应源码；再分发 APK 时保留
+`hotupdate/LICENSE`。
+
 ## XopProtector
 
 - 用途：构建期 APK 加固（DEX 加密、RASP、PVM2 真 VMP）；其 shell
