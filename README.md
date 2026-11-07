@@ -11,6 +11,8 @@ Jetpack Compose + [COUI](https://github.com/suqi8/coui) 的 Android 客户端，
 mobile/
 ├─ shared/          # Android library：DTO、Ktor 客户端、Token 存储、COUI 页面
 ├─ nativeBridge/    # 原生单 WebView 游戏容器（Bin 注入、localStorage）
+├─ hotupdate/       # 热更新模块（vendor 自 hdppppppp/hot-update）：整包更新 + DEX 热修运行时
+├─ build-logic/     # 热修复插桩插件 com.taotao.hotfix（vendor 自同仓库）
 ├─ androidApp/      # Android 宿主：Application、MainActivity、签名与版本配置
 └─ .github/workflows/android.yml # GitHub Actions 云端构建 APK
 ```
@@ -74,6 +76,9 @@ tideApiBaseUrl=http://192.168.31.17:3100
 - 操作日志列表
 - 修改密码、退出登录
 - 单账号游戏容器：拉取 Bin 后注入 WebView localStorage，再加载 `/game/game.html`
+- 热更新：启动检查 `/api/v1/app/bootstrap`，支持整包升级（下载断点续传 + sha256 校验 +
+  系统安装器）、DEX 方法级热修补丁（即时生效 + 自愈回滚）与远程配置；服务端见主仓
+  `server/src/release/`
 - COUI 主题：跟随系统浅色 / 深色，底部导航、卡片、开关、输入框均为 COUI 组件
 
 ## 未实现 / 待验证
@@ -97,6 +102,34 @@ tideApiBaseUrl=http://192.168.31.17:3100
 - Bin 只在内存中使用，不写入磁盘；`GameManagerActivity` 销毁后即释放。
 - Token 以 Keystore 加密存储；Bin 由服务端按账号鉴权后下发。
 - 日志不输出 token、Bin、请求体。
+- 热更新补丁是动态加载执行的代码：下载地址强制 https（明文拒绝）、sha256 校验、
+  与宿主 versionCode 严格绑定，且系统安装/加载层还有签名与只读 dex 两道防线。
+
+## 热更新
+
+源码 vendor 自 <https://github.com/hdppppppp/hot-update>（v1.0.0，GPL-3.0，许可证见
+`hotupdate/LICENSE`），包含三部分：
+
+| 位置 | 内容 |
+| --- | --- |
+| `hotupdate/` | 运行时模块：`com.taotao.music.update`（整包更新/远程配置）+ `com.taotao.music.hotfix`（DEX 热修）。包名固定不可改：插桩白名单、R8 keep 与补丁方法键都以它为前缀 |
+| `build-logic/` | 编译期插桩插件 `com.taotao.hotfix`：在可热修方法入口插入补丁分发判断 |
+| `androidApp` 的 `TideUpdateHost` | 宿主契约实现：令牌（TokenStorage 当前值，不续期）、稳定设备号、远程配置落盘、划掉记录 |
+
+接入约定（与上游 README 一致，不可省略）：
+
+- `TideApplication.onCreate` 先 `HotUpdate.installPatches(this)`，返回值传给
+  `HotUpdate.create(..., initialPatchVersion = ...)`，再 `launchCheck()`。
+- 补丁自愈的另一半在 `MainActivity` 渲染正常后调用
+  `updateManager.confirmPatch(activePatchVersion)`（当前接入了可选更新横幅与强制门禁；
+  confirmPatch 的调用点在页面稳定后补上即可生效）。
+- 可热修边界（`build-logic` 白名单）：`com/tideengine/mobile/data/`、
+  `com/tideengine/mobile/update/`。Compose UI（`ui/`）与 WebView 桥接（`bridge/`）
+  不插桩 —— Compose 可组合函数不能在入口提前 return，界面 bug 必须发整包。
+- 补丁只能替换已存在的方法实现，不能新增类/字段；补丁与宿主 versionCode 强绑定。
+
+服务端配套接口在主仓 `server/src/release/`（`/api/v1/app/bootstrap`、APK/补丁下载、
+管理员发布/放量/抬下限），版本判定协议与上游 `hotupdate-node` SDK 三方对齐。
 
 ## 云端构建
 
