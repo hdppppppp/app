@@ -65,6 +65,28 @@ jobs:
         with:
           packages: "platforms;android-37.0 build-tools;36.0.0"
 
+      # Gradle 官方分发服务（services.gradle.org）2026-11-08 起长时间间歇 504，
+      # 连续 8 次构建全部卡死在下载发行版上。按 setup-gradle 的源码逻辑（gradle/actions
+      # dist/setup-gradle/main/index.js 的 i8t：`installs/gradle-<version>` 已存在即
+      # 跳过下载）用腾讯云镜像预热 RUNNER_TEMP 安装目录。镜像包已与官方 sha256
+      # （9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14）逐字节
+      # 校验一致；官方服务恢复后可删除此步骤。
+      - name: Warm Gradle distribution from Tencent mirror
+        run: |
+          set -euo pipefail
+          version="9.6.1"
+          installDir="${RUNNER_TEMP}/.gradle-actions/gradle-installations/installs/gradle-${version}"
+          if [ -x "$installDir/bin/gradle" ]; then
+            echo "Gradle ${version} already provisioned at $installDir"
+            exit 0
+          fi
+          url="https://mirrors.cloud.tencent.com/gradle/gradle-${version}-bin.zip"
+          curl --retry 5 --retry-delay 5 --connect-timeout 20 -fL "$url" -o /tmp/gradle.zip
+          echo "9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14  /tmp/gradle.zip" | sha256sum --check --status
+          mkdir -p "$(dirname "$installDir")"
+          unzip -q /tmp/gradle.zip -d "$(dirname "$installDir")"
+          "$installDir/bin/gradle" --version
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
@@ -103,6 +125,24 @@ jobs:
         uses: android-actions/setup-android@v3
         with:
           packages: "platforms;android-37.0 build-tools;36.0.0"
+
+      # 与 build job 相同的镜像预热：官方分发服务 504 期间 release 构建同样会卡在
+      # 下载 Gradle 发行版。两个 job 不共享 runner，必须各自预热。
+      - name: Warm Gradle distribution from Tencent mirror
+        run: |
+          set -euo pipefail
+          version="9.6.1"
+          installDir="${RUNNER_TEMP}/.gradle-actions/gradle-installations/installs/gradle-${version}"
+          if [ -x "$installDir/bin/gradle" ]; then
+            echo "Gradle ${version} already provisioned at $installDir"
+            exit 0
+          fi
+          url="https://mirrors.cloud.tencent.com/gradle/gradle-${version}-bin.zip"
+          curl --retry 5 --retry-delay 5 --connect-timeout 20 -fL "$url" -o /tmp/gradle.zip
+          echo "9c0f7faeeb306cb14e4279a3e084ca6b596894089a0638e68a07c945a32c9e14  /tmp/gradle.zip" | sha256sum --check --status
+          mkdir -p "$(dirname "$installDir")"
+          unzip -q /tmp/gradle.zip -d "$(dirname "$installDir")"
+          "$installDir/bin/gradle" --version
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
