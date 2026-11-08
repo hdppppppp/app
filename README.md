@@ -115,6 +115,7 @@ tideApiBaseUrl=http://192.168.31.17:3100
 | `hotupdate/` | 运行时模块：`com.taotao.music.update`（整包更新/远程配置）+ `com.taotao.music.hotfix`（DEX 热修）。包名固定不可改：插桩白名单、R8 keep 与补丁方法键都以它为前缀 |
 | `build-logic/` | 编译期插桩插件 `com.taotao.hotfix`：在可热修方法入口插入补丁分发判断 |
 | `androidApp` 的 `TideUpdateHost` | 宿主契约实现：令牌（TokenStorage 当前值，不续期）、稳定设备号、远程配置落盘、划掉记录 |
+| `androidApp` 的 `ui/update/UpdateGate` | 门禁 UI：强制更新拦截页 + 可选更新横幅（COUI 组件）。放在 androidApp 而非 shared——它 import `:hotupdate` 的 `UpdateStatus` 类型，shared 是底层模块不能反向依赖 hotupdate |
 
 接入约定（与上游 README 一致，不可省略）：
 
