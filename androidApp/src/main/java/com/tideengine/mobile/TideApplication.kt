@@ -3,6 +3,7 @@ package com.tideengine.mobile
 import android.app.Application
 import com.taotao.music.update.HotUpdate
 import com.taotao.music.update.HotUpdateSession
+import kotlinx.coroutines.launch
 
 class TideApplication : Application() {
 
@@ -25,4 +26,18 @@ class TideApplication : Application() {
         hotUpdate = HotUpdate.create(this, TideUpdateHost(this, BuildConfig.API_BASE_URL), initialPatchVersion = activePatchVersion)
         hotUpdate.launchCheck()
     }
+}
+
+/**
+ * HotUpdateSession 的界面动作扩展：check / download / retry 是 suspend 函数，
+ * UI 回调（onClick / onXxx lambda）不是协程上下文。Session 的 scope 是 private，
+ * 这里自建主线程作用域 launch —— 与模块内部默认作用域（Main.immediate）一致，
+ * UpdateManager 内部的互斥锁保证同一时刻只有一次检查/下载，不会因多次 launch 重复执行。
+ */
+fun HotUpdateSession.launchDownload() = launchUiAction { updateManager.download() }
+
+fun HotUpdateSession.launchRetry() = launchUiAction { updateManager.retry() }
+
+private fun HotUpdateSession.launchUiAction(block: suspend () -> Unit) {
+    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main.immediate).launch { block() }
 }

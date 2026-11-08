@@ -22,11 +22,11 @@ class MainActivity : ComponentActivity() {
             val status by hotUpdate.updateManager.statusFlow.collectAsState()
             UpdateGate(
                 status = status,
-                onCheck = { hotUpdate.updateManager.check(manual = true) },
-                onDownload = { hotUpdate.updateManager.download() },
+                onCheck = { hotUpdate.launchCheck(manual = true) },
+                onDownload = { hotUpdate.launchDownload() },
                 onInstall = { hotUpdate.updateManager.install() },
                 onDismiss = { hotUpdate.updateManager.dismiss() },
-                onRetry = { hotUpdate.updateManager.retry() },
+                onRetry = { hotUpdate.launchRetry() },
             ) {
                 TideApp(
                     onOpenManager = { accountId ->

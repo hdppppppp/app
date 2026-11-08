@@ -13,7 +13,7 @@ import com.tideengine.mobile.auth.TokenStorage
  * 的当前值，不触发续期 —— 检查更新是后台动作，令牌过期时服务端会退回按设备号分桶，
  * 不能因为更新检查把用户踢回登录页。
  *
- * 服务端地址复用 API_BASE_URL：热更新接口与业务 API 同源（/api/v1/app/*），
+ * 服务端地址复用 API_BASE_URL：热更新接口与业务 API 同源（/api/v1/app 路径），
  * 内网部署改一个属性就能同时切换两者。
  */
 class TideUpdateHost(context: Context, private val apiBaseUrl: String) : UpdateHost {
@@ -21,7 +21,7 @@ class TideUpdateHost(context: Context, private val apiBaseUrl: String) : UpdateH
     private val appContext = context.applicationContext
     private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
 
-    // 热更新检查地址与业务 API 同源；baseUrl 去掉尾斜杠后直接拼 /api/v1/app/*。
+    // 热更新检查地址与业务 API 同源；baseUrl 去掉尾斜杠后直接拼 /api/v1/app 路径。
     override val endpoint: String = apiBaseUrl.trimEnd('/')
 
     override val userAgent: String = "TideEngine-Android/${BuildConfig.VERSION_NAME}"
