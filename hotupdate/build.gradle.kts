@@ -14,6 +14,9 @@ plugins {
     alias(libs.plugins.kotlin.android)
     // UpdateManager 用 Compose 状态暴露检查结果；经 compose 插件取 runtime，
     // 与 :shared 的解析方式一致（版本由 libs.versions.toml 的 compose 决定）。
+    // Compose Multiplatform 1.6.10 起，应用 org.jetbrains.compose 的模块必须同时
+    // 应用 Kotlin 的 compose 编译器插件，否则配置期直接报错。
+    alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.compose)
 }
 
