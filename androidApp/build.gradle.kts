@@ -92,4 +92,8 @@ dependencies {
     implementation(libs.androidx.webkit)
     implementation(libs.androidx.activity.compose)
     implementation(libs.kotlinx.coroutines.android)
+    // ui/update/UpdateGate 直接使用 COUI 组件与主题；shared 把 COUI 作为
+    // implementation 依赖（非 api），宿主用到时需自行声明。
+    implementation(libs.coui.ui)
+    implementation(libs.coui.icons)
 }
