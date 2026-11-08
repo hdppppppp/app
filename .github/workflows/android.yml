@@ -5,19 +5,51 @@ on:
     branches: [main]
   pull_request:
   workflow_dispatch:
+    inputs:
+      protect:
+        description: "PVM2 加固范围：none=只出签名包，canary=仅 auth/ApiClient，business=业务层全量"
+        type: choice
+        options:
+          - none
+          - canary
+          - business
+        default: none
+      risk_profile:
+        description: "RASP 检测：baseline=不检测 root/模拟器，strict=检测 root/模拟器"
+        type: choice
+        options:
+          - baseline
+          - strict
+        default: baseline
+      rasp_action:
+        description: "RASP 响应：0=只记录，1=降级，2=阻断"
+        type: choice
+        options:
+          - "0"
+          - "1"
+          - "2"
+        default: "1"
 
 concurrency:
   group: android-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-  VERSION_CODE: ${{ github.run_number }}
-  VERSION_NAME: "0.1.${{ github.run_number }}"
+  # CI 包使用固定版本号，避免 VERSION_NAME/VERSION_CODE 每次变化导致配置缓存和
+  # dexBuilderRelease 构建缓存失效；对外发布版本由独立流程控制。
+  VERSION_CODE: "1"
+  VERSION_NAME: "0.1.0"
 
 jobs:
   build:
+    # 手动加固 run 不需要 debug 包，避免与 release/protect 争抢 runner 和缓存带宽
+    if: github.event_name != 'workflow_dispatch' || inputs.protect == 'none'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
+    env:
+      # debug 包不对外发布，固定版本号才能复用配置缓存与构建缓存
+      VERSION_CODE: "1"
+      VERSION_NAME: "0.1.0-debug"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -31,15 +63,18 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+          packages: "platforms;android-37.0 build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
+          gradle-version: "9.6.1"
+          cache-read-only: ${{ github.event_name == 'pull_request' }}
+          # 固定密钥才能跨 runner 解密 configuration-cache
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Build debug APK
-        run: gradle :androidApp:assembleDebug --no-daemon --stacktrace
+        run: gradle :androidApp:assembleDebug --build-cache --stacktrace
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
@@ -51,7 +86,9 @@ jobs:
   release:
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 90
+    env:
+      XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -65,12 +102,15 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          packages: "platforms;android-34 build-tools;34.0.0 platform-tools"
+          packages: "platforms;android-37.0 build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.7"
+          gradle-version: "9.6.1"
+          cache-read-only: false
+          # release 版本固定后同样可以复用配置缓存；条目按内容哈希独立保存
+          cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
 
       - name: Restore signing keystore
         env:
@@ -96,11 +136,11 @@ jobs:
               exit 1
             fi
           done
-          gradle :androidApp:assembleRelease --no-daemon --stacktrace
+          gradle :androidApp:assembleRelease --build-cache --stacktrace
 
       - name: Verify APK signature
         run: |
-          $ANDROID_HOME/build-tools/34.0.0/apksigner verify --print-certs \
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs \
             androidApp/build/outputs/apk/release/*.apk
 
       - name: Upload signed release APK
@@ -109,3 +149,146 @@ jobs:
           name: tide-engine-android-release-${{ github.run_number }}
           path: androidApp/build/outputs/apk/release/*.apk
           if-no-files-found: error
+
+      # 加固步骤复用 release job 的 workspace、JDK 和 Android SDK，避免第二次
+      # runner 启动、artifact 上传/下载和 build-tools 安装。
+      - name: Fetch XopProtector at pinned commit
+        if: inputs.protect != 'none'
+        run: |
+          git init "$RUNNER_TEMP/xop"
+          git -C "$RUNNER_TEMP/xop" remote add origin https://github.com/xopJack/XopProtector.git
+          git -C "$RUNNER_TEMP/xop" fetch --depth 1 origin "$XOP_REF"
+          git -C "$RUNNER_TEMP/xop" checkout --detach FETCH_HEAD
+          git -C "$RUNNER_TEMP/xop" log -1 --format='XopProtector %H %s'
+
+      - name: Restore XopProtector build cache
+        if: inputs.protect != 'none'
+        id: xop-cache
+        uses: actions/cache/restore@v4
+        continue-on-error: true
+        with:
+          path: |
+            ${{ runner.temp }}/xop/executable
+            ${{ runner.temp }}/xop/packer/build/libs
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v2
+
+      - name: Install XopProtector toolchains
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
+        run: |
+          # 用进程替换喂 y，避免 pipefail 把 yes 的 SIGPIPE 当成失败
+          sdkmanager "cmake;3.22.1" "ndk;25.1.8937393" "ndk;27.2.12479018" < <(yes)
+
+      - name: Keep only NDKs required by XopProtector
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
+        run: |
+          for dir in "$ANDROID_HOME"/ndk/*; do
+            [ -d "$dir" ] || continue
+            case "$(basename "$dir")" in
+              25.1.8937393|27.2.12479018) ;;
+              *) echo "Removing preinstalled NDK $(basename "$dir")"; sudo rm -rf "$dir" ;;
+            esac
+          done
+          ls "$ANDROID_HOME/ndk"
+
+      - name: Build XopProtector packer and shell
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
+        working-directory: ${{ runner.temp }}/xop
+        # 上游 gradle.properties 和 settings.gradle.kts 都硬编码了 Windows 盘符路径，
+        # Linux 上会被 file() 当 URL 解析而报错。空值覆盖属性，并删掉盘符候选，
+        # 保留相对路径候选；两者都不存在时 settings 会跳过 :unimp-host。
+        # 同一个 job 内 setup-gradle 只执行第一次，因此这里用仓库 wrapper 并切到 8.7。
+        run: |
+          sed -i 's|gradle-8.2-bin.zip|gradle-8.7-bin.zip|' gradle/wrapper/gradle-wrapper.properties
+          sed -i '/E:\/Android\/SDK-Android@5.14-20260706\/SDK\/libs/d' settings.gradle.kts
+          chmod +x gradlew
+          ./gradlew :packer:jar exportShellFiles -Punimp.sdk.libs= --build-cache --stacktrace
+
+      - name: Save XopProtector build cache
+        if: inputs.protect != 'none' && steps.xop-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: |
+            ${{ runner.temp }}/xop/executable
+            ${{ runner.temp }}/xop/packer/build/libs
+          key: xop-${{ env.XOP_REF }}-${{ runner.os }}-ndk25.1-27.2-cmake3.22.1-gradle8.7-v2
+
+      - name: Run XopProtector (DEX encrypt + RASP + PVM2)
+        if: inputs.protect != 'none'
+        env:
+          VMP_SCOPE: ${{ inputs.protect }}
+          RISK_PROFILE: ${{ inputs.risk_profile }}
+          RASP_ACTION: ${{ inputs.rasp_action }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          JAR=$(find "$RUNNER_TEMP/xop/packer/build/libs" -maxdepth 1 -name 'protector-packer-*.jar' ! -name '*-sources.jar' -print -quit)
+          APK=$(find androidApp/build/outputs/apk/release -maxdepth 1 -name '*.apk' -print -quit)
+          if [ -z "$JAR" ] || [ -z "$APK" ]; then
+            echo "::error::找不到 packer jar 或输入 APK"
+            exit 1
+          fi
+
+          mkdir -p out
+          OUT="out/tide-engine-${VMP_SCOPE}-${VERSION_NAME}-${GITHUB_RUN_NUMBER}.apk"
+
+          PREFIXES=(
+            "--true-vmp-prefix" "Lcom/tideengine/mobile/auth/"
+            "--true-vmp-prefix" "Lcom/tideengine/mobile/api/ApiClient;"
+            "--true-vmp-prefix" "Lcom/tideengine/mobile/api/ApiException;"
+          )
+          if [ "$VMP_SCOPE" = "business" ]; then
+            PREFIXES+=("--true-vmp-prefix" "Lcom/tideengine/mobile/data/")
+          fi
+
+          case "$RISK_PROFILE" in
+            strict) RISK_FLAGS=2 ;;
+            *) RISK_FLAGS=50 ;;
+          esac
+
+          set +e
+          java -jar "$JAR" "$APK" -o "$OUT" \
+            --shell-dir "$RUNNER_TEMP/xop/executable/shell-files" \
+            --profile balanced \
+            --no-payment-auto-vmp --no-industry-auto-vmp \
+            --no-protect-so \
+            "${PREFIXES[@]}" \
+            --risk-flags "$RISK_FLAGS" \
+            --rasp-action "$RASP_ACTION" \
+            --keystore "$RUNNER_TEMP/release.jks" \
+            --alias "$ANDROID_KEY_ALIAS" \
+            --storepass "$ANDROID_KEYSTORE_PASSWORD" \
+            --keypass "$ANDROID_KEY_PASSWORD" 2>&1 | tee protect.log
+          STATUS=${PIPESTATUS[0]}
+          set -e
+          if [ "$STATUS" -ne 0 ]; then
+            echo "::error::XopProtector 退出码 $STATUS"
+            exit "$STATUS"
+          fi
+
+          cp "$RUNNER_TEMP/xop/LICENSE" out/XopProtector-LICENSE.txt
+          cp "$RUNNER_TEMP/xop/NOTICE" out/XopProtector-NOTICE.txt
+
+          grep -E 'True-VMP policy|PVM2 admission|PVM2 skip reasons|size_report' protect.log || true
+          if ! grep -qE 'PVM2 admission:.*success=[1-9]' protect.log; then
+            echo "::error::没有方法通过 PVM2 准入，检查前缀与 protect.log"
+            exit 1
+          fi
+
+      - name: Verify protected APK signature
+        if: inputs.protect != 'none'
+        run: |
+          $ANDROID_HOME/build-tools/36.0.0/apksigner verify --print-certs out/*.apk
+
+      - name: Upload protected APK and reports
+        if: always() && inputs.protect != 'none'
+        uses: actions/upload-artifact@v4
+        with:
+          name: tide-engine-android-pvm2-${{ inputs.protect }}-${{ github.run_number }}
+          path: |
+            out/
+            protect.log
+          if-no-files-found: warn
+          retention-days: 7

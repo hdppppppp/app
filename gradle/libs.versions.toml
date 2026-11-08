@@ -1,16 +1,19 @@
 [versions]
-agp = "8.5.0"
-kotlin = "2.1.21"
-ksp = "2.1.21-2.0.1"
-compose = "1.7.3"
-# Kuikly 版本在 gradle.properties 的 kuiklyVersion 中统一定义。
-ktor = "2.3.10"
-coroutines = "1.9.0"
-serialization = "1.7.3"
-androidxCore = "1.13.1"
-androidxAppCompat = "1.7.0"
-androidxWebkit = "1.11.0"
-material = "1.12.0"
+agp = "9.3.1"
+kotlin = "2.4.21"
+compose = "1.11.1"
+coui = "1.1.0"
+ktor = "3.5.1"
+coroutines = "1.11.0"
+serialization = "1.11.0"
+androidxCore = "1.19.0"
+androidxAppCompat = "1.7.1"
+androidxWebkit = "1.16.0"
+androidxActivityCompose = "1.13.0"
+material = "1.14.0"
+compileSdk = "37"
+targetSdk = "34"
+minSdk = "26"
 
 [libraries]
 ktor-client-core = { module = "io.ktor:ktor-client-core", version.ref = "ktor" }
@@ -23,14 +26,15 @@ kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serializa
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
 androidx-appcompat = { module = "androidx.appcompat:appcompat", version.ref = "androidxAppCompat" }
 androidx-webkit = { module = "androidx.webkit:webkit", version.ref = "androidxWebkit" }
+androidx-activity-compose = { module = "androidx.activity:activity-compose", version.ref = "androidxActivityCompose" }
 material = { module = "com.google.android.material:material", version.ref = "material" }
+coui-ui = { module = "io.github.suqi8.coui.kmp:coui-ui-android", version.ref = "coui" }
+coui-icons = { module = "io.github.suqi8.coui.kmp:coui-icons-android", version.ref = "coui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 android-library = { id = "com.android.library", version.ref = "agp" }
-kotlin-multiplatform = { id = "org.jetbrains.kotlin.multiplatform", version.ref = "kotlin" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
 kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "kotlin" }
-ksp = { id = "com.google.devtools.ksp", version.ref = "ksp" }
 compose = { id = "org.jetbrains.compose", version.ref = "compose" }

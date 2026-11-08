@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- UpdateDownloader 把 APK 落在 context.filesDir/update/（内部存储 files 根下） -->
+    <files-path name="update" path="update/" />
+</paths>

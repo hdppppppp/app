@@ -1,20 +1,10 @@
 pluginManagement {
-    // Kuikly Gradle 插件没有发布 plugin marker，按官方指引重定向到 core-gradle-plugin。
-    // 版本与 gradle.properties 的 kuiklyVersion 保持一致。
-    val kuiklyVersion = providers.gradleProperty("kuiklyVersion").get()
-    resolutionStrategy {
-        eachPlugin {
-            if (requested.id.id == "com.tencent.kuikly-open.kuikly") {
-                useModule("com.tencent.kuikly-open:core-gradle-plugin:$kuiklyVersion")
-            }
-        }
-    }
-
+    // 热修复插桩插件（com.taotao.hotfix）以源码形式放在 build-logic 里，includeBuild 引入。
+    includeBuild("build-logic")
     repositories {
         google()
         gradlePluginPortal()
         mavenCentral()
-        maven("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
     }
 }
 
@@ -23,7 +13,6 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
-        maven("https://mirrors.tencent.com/nexus/repository/maven-tencent/")
     }
 }
 
@@ -31,4 +20,5 @@ rootProject.name = "tide-engine-mobile"
 
 include(":shared")
 include(":nativeBridge")
+include(":hotupdate")
 include(":androidApp")
