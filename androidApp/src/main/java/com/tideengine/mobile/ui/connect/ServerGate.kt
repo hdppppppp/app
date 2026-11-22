@@ -212,7 +212,7 @@ private fun ManualAddressForm(
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
             label = "服务地址",
-            backgroundMode = TextFieldMode.Rectangle,
+            backgroundMode = TextFieldMode.Line,
             enabled = enabled,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
