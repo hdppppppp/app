@@ -96,7 +96,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
     // 根容器不滚动：协议浮层必须渲染在滚动容器之外——它在自身带内滚动，
     // 放进 verticalScroll 会收到无限高度约束，COUI 的 overscroll 测量节点
     // 直接抛异常（真机点协议链接即闪退）；遮罩也必须铺满根容器而非仅内容区。
-    Box(modifier = Modifier.fillMaxSize().background(scheme.backgroundElevated)) {
+    Box(modifier = Modifier.fillMaxSize().background(scheme.backgroundWithCard)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()

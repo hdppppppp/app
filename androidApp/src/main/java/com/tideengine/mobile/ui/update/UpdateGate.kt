@@ -109,7 +109,7 @@ private fun ForceUpdatePage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.backgroundElevated)
+            .background(scheme.backgroundWithCard)
             .systemBarsPadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center,
