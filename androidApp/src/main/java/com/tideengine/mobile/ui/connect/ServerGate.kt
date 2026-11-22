@@ -36,6 +36,7 @@ import com.tideengine.mobile.ui.components.TideLoadingRow
 import com.tideengine.mobile.ui.components.TideLogo
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import io.github.suqi8.coui.kmp.basic.InputView
+import io.github.suqi8.coui.kmp.basic.InputViewDefaults
 import io.github.suqi8.coui.kmp.basic.Switch
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
@@ -207,8 +208,12 @@ private fun ManualAddressForm(
             title = "服务地址",
             label = "例如 192.168.31.17:3100",
             enabled = enabled,
-            // 清除按钮按条件出现会撑高输入行（登录页账号框同因），一并关闭
+            // 清除按钮按条件出现会撑高输入行（登录页账号框同因），一并关闭；
+            // 卡片底色同登录页：默认 cardBackground 白底上隐形
             showClearButton = false,
+            colors = InputViewDefaults.inputViewColors(
+                cardColor = COUITheme.colorScheme.surfaceContainerHigh,
+            ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Uri,
