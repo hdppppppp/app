@@ -29,6 +29,14 @@ on:
           - "1"
           - "2"
         default: "1"
+      version_code:
+        description: "release 包 versionCode 覆盖（必须高于已安装版本才能覆盖安装/推送更新；留 1 保持默认）"
+        type: string
+        default: "1"
+      version_name:
+        description: "release 包 versionName 覆盖（展示用，如 0.2.0；留默认 0.1.0）"
+        type: string
+        default: "0.1.0"
 
 concurrency:
   group: android-${{ github.ref }}
@@ -111,6 +119,10 @@ jobs:
     timeout-minutes: 90
     env:
       XOP_REF: e8a15269ae8bb404dee7f11958fd1c1090dd79cb
+      # release 包版本可由手动触发覆盖（对外发布由独立流程控制）；debug job
+      # 不受影响仍用全局固定值，配置缓存条目互不干扰
+      VERSION_CODE: ${{ inputs.version_code || '1' }}
+      VERSION_NAME: ${{ inputs.version_name || '0.1.0' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
