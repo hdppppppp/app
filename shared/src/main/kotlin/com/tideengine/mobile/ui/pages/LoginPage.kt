@@ -53,6 +53,7 @@ import com.tideengine.mobile.ui.legal.USER_AGREEMENT
 import com.tideengine.mobile.ui.legal.DocumentSheet
 import io.github.suqi8.coui.kmp.basic.Checkbox
 import io.github.suqi8.coui.kmp.basic.InputView
+import io.github.suqi8.coui.kmp.basic.InputViewDefaults
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.launch
@@ -133,16 +134,22 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
 
             // 输入区：COUI InputView（ColorOS 设置同款「卡片单输入」）。账号框
             // 不开 showClearButton —— 清除按钮按焦点与内容条件出现，出现时撑高
-            // 输入行导致视觉抖动；密码可见切换是常驻元素，高度恒定可保留
+            // 输入行导致视觉抖动；密码可见切换是常驻元素，高度恒定可保留。
+            // 卡片底色显式用 surfaceContainerHigh：默认 cardBackground 在浅色
+            // 主题下是纯白，落在白底页面上卡片会隐形
+            val inputColors = InputViewDefaults.inputViewColors(
+                cardColor = scheme.surfaceContainerHigh,
+            )
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 InputView(
                     value = identifier,
                     onValueChange = { identifier = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "账号",
-                    label = "邮箱或用户名",
+                    // 卡内已有标题，不再叠灰色 hint（空内容提示冗余）
                     enabled = !loading,
                     errorMessage = error.orEmpty(),
+                    colors = inputColors,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next,
@@ -154,9 +161,9 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "密码",
-                    label = "请输入密码",
                     enabled = !loading,
                     showPasswordToggle = true,
+                    colors = inputColors,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done,
