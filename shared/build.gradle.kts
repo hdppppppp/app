@@ -39,6 +39,7 @@ dependencies {
 
     implementation(libs.coui.ui)
     implementation(libs.coui.icons)
+    implementation(libs.coui.blur)
     implementation(libs.androidx.activity.compose)
 
     implementation(libs.ktor.client.core)

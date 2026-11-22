@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
@@ -43,6 +44,7 @@ fun TasksTab(
     refreshKey: Int,
     onRefresh: () -> Unit,
     onSessionExpired: () -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     var tasks by remember { mutableStateOf<List<TaskDto>>(emptyList()) }
     var loading by remember { mutableStateOf(true) }
@@ -110,7 +112,12 @@ fun TasksTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 12.dp,
+            bottom = 12.dp + bottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (loading) item { TideLoadingRow(text = "正在加载任务…") }

@@ -18,6 +18,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
@@ -47,6 +48,7 @@ fun AccountsTab(
     onRefresh: () -> Unit,
     onSessionExpired: () -> Unit,
     onOpenManager: (String) -> Unit,
+    bottomPadding: Dp = 0.dp,
 ) {
     var accounts by remember { mutableStateOf<List<GameAccountDto>>(emptyList()) }
     var switches by remember { mutableStateOf<List<TaskSwitchDto>>(emptyList()) }
@@ -137,7 +139,12 @@ fun AccountsTab(
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            top = 12.dp,
+            bottom = 12.dp + bottomPadding,
+        ),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         if (loading) item { TideLoadingRow(text = "正在加载游戏账号…") }
