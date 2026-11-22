@@ -28,20 +28,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.dto.PublicUser
-import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideLogo
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.errorText
+import io.github.suqi8.coui.kmp.basic.InputView
 import io.github.suqi8.coui.kmp.basic.Switch
 import io.github.suqi8.coui.kmp.basic.Text
-import io.github.suqi8.coui.kmp.basic.TextField
-import io.github.suqi8.coui.kmp.basic.TextFieldMode
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.launch
 
@@ -50,19 +47,16 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
     val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
 
-    var identifier by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(""))
-    }
-    var password by rememberSaveable(stateSaver = TextFieldValue.Saver) {
-        mutableStateOf(TextFieldValue(""))
-    }
+    // InputView 只接收纯 String，状态随之简化（不再需要 TextFieldValue.Saver）
+    var identifier by rememberSaveable { mutableStateOf("") }
+    var password by rememberSaveable { mutableStateOf("") }
     var rememberMe by rememberSaveable { mutableStateOf(true) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
 
     fun submit() {
-        val account = identifier.text.trim()
-        if (account.isBlank() || password.text.isBlank()) {
+        val account = identifier.trim()
+        if (account.isBlank() || password.isBlank()) {
             error = "请输入账号和密码"
             return
         }
@@ -71,7 +65,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
         error = null
         scope.launch {
             try {
-                val response = ServiceLocator.auth.login(account, password.text, rememberMe)
+                val response = ServiceLocator.auth.login(account, password, rememberMe)
                 onAuthenticated(response.user)
             } catch (throwable: Throwable) {
                 error = errorText(throwable)
@@ -116,32 +110,33 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
 
             Spacer(Modifier.height(28.dp))
 
-            // 输入区：ColorOS 风格下划线输入（Line 模式），独立字段不再套卡片，
-            // 避免「盒子套盒子」的层次噪音
+            // 输入区：COUI InputView（ColorOS 设置同款「卡片单输入」），白卡 +
+            // 卡内标题 + 无装饰输入框；错误走组件自带的 errorMessage（红字 +
+            // 抖动动画，显示在卡片下方），不再用横幅
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                TextField(
+                InputView(
                     value = identifier,
                     onValueChange = { identifier = it },
                     modifier = Modifier.fillMaxWidth(),
+                    title = "账号",
                     label = "邮箱或用户名",
-                    backgroundMode = TextFieldMode.Line,
                     enabled = !loading,
-                    singleLine = true,
+                    showClearButton = true,
+                    errorMessage = error.orEmpty(),
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next,
                     ),
                 )
 
-                TextField(
+                InputView(
                     value = password,
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = "密码",
-                    backgroundMode = TextFieldMode.Line,
+                    title = "密码",
+                    label = "请输入密码",
                     enabled = !loading,
                     showPasswordToggle = true,
-                    singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done,
@@ -166,11 +161,6 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onCheckedChange = { rememberMe = it },
                     enabled = !loading,
                 )
-            }
-
-            error?.let { message ->
-                Spacer(Modifier.height(10.dp))
-                TideErrorBanner(message = message)
             }
 
             Spacer(Modifier.height(16.dp))
