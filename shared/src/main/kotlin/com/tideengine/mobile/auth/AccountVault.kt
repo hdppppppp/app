@@ -28,6 +28,8 @@ data class SavedAccount(
 interface AccountVault {
     fun loadAccounts(): List<SavedAccount>
 
+    fun saveAccounts(accounts: List<SavedAccount>)
+
     fun upsert(account: SavedAccount)
 
     fun remove(userId: String)
@@ -45,6 +47,10 @@ object AccountVaultStorage {
     }
 
     fun loadAccounts(): List<SavedAccount> = vault?.loadAccounts() ?: emptyList()
+
+    fun saveAccounts(accounts: List<SavedAccount>) {
+        vault?.saveAccounts(accounts)
+    }
 
     fun upsert(account: SavedAccount) {
         vault?.upsert(account)

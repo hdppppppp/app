@@ -86,6 +86,11 @@ class AuthRepository(private val api: ApiClient) {
             ?.let { TokenStorage.save(it.token) }
     }
 
+    /** 从保险库移除指定账号（切换目标 token 失效时调用）。 */
+    fun removeSavedAccount(userId: String) {
+        AccountVaultStorage.remove(userId)
+    }
+
     /** 登录成功后把账号写入保险库并设为激活（重复登录按 userId 覆盖）。 */
     private fun rememberAccount(user: PublicUser, token: String) {
         AccountVaultStorage.upsert(user.toSavedAccount(token))
@@ -94,11 +99,9 @@ class AuthRepository(private val api: ApiClient) {
 
     /** 头像更新后同步保险库里的展示字段，切换列表里看到的头像不滞后。 */
     private fun syncVaultUser(user: PublicUser) {
-        val accounts = AccountVaultStorage.loadAccounts()
-        val index = accounts.indexOfFirst { it.userId == user.id }
-        if (index < 0) return
-        accounts[index] = accounts[index].copy(avatarUrl = user.avatarUrl)
-        AccountVaultStorage.saveAccounts(accounts)
+        val updated = AccountVaultStorage.loadAccounts()
+            .map { if (it.userId == user.id) it.copy(avatarUrl = user.avatarUrl) else it }
+        AccountVaultStorage.saveAccounts(updated)
     }
 
     private fun PublicUser.toSavedAccount(token: String): SavedAccount = SavedAccount(
