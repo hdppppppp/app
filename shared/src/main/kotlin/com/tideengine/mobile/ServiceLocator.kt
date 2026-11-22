@@ -28,10 +28,10 @@ object ServiceLocator {
     var apiBaseUrl: String = ""
         private set
 
-    fun initialize(baseUrl: String) {
+    fun initialize(baseUrl: String, userAgent: String) {
         if (initialized) return
         apiBaseUrl = baseUrl.trimEnd('/')
-        api = ApiClient(apiBaseUrl, { TokenStorage.load() }, { TokenStorage.clear() })
+        api = ApiClient(apiBaseUrl, userAgent, { TokenStorage.load() }, { TokenStorage.clear() })
         auth = AuthRepository(api)
         gameAccounts = GameAccountRepository(api)
         tasks = TaskRepository(api)
