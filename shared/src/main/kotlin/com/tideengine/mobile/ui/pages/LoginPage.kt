@@ -1,5 +1,11 @@
 package com.tideengine.mobile.ui.pages
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -62,8 +68,10 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
     var rememberMe by rememberSaveable { mutableStateOf(true) }
     var loading by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    // 协议文档在 App 内以浮层展示，不跳网页（WebView 冷启动代价高、体验差）
+    // 协议文档在 App 内以浮层展示，不跳网页（WebView 冷启动代价高、体验差）。
+    // legalDoc 在关闭时保留（只是不再可见），退出动画期间仍要渲染内容
     var legalDoc by remember { mutableStateOf<com.tideengine.mobile.ui.legal.AgreementDoc?>(null) }
+    var sheetVisible by remember { mutableStateOf(false) }
 
     fun submit() {
         val account = identifier.trim()
@@ -193,13 +201,19 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     append("登录即表示您同意")
                     withStyle(SpanStyle(color = scheme.primary)) {
                         withLink(
-                            LinkAnnotation.Clickable("user") { legalDoc = USER_AGREEMENT },
+                            LinkAnnotation.Clickable("user") {
+                                legalDoc = USER_AGREEMENT
+                                sheetVisible = true
+                            },
                         ) { append("《用户协议》") }
                     }
                     append("与")
                     withStyle(SpanStyle(color = scheme.primary)) {
                         withLink(
-                            LinkAnnotation.Clickable("privacy") { legalDoc = PRIVACY_POLICY },
+                            LinkAnnotation.Clickable("privacy") {
+                                legalDoc = PRIVACY_POLICY
+                                sheetVisible = true
+                            },
                         ) { append("《隐私政策》") }
                     }
                 },
@@ -222,9 +236,22 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
         }
         }
 
-        // 协议浮层渲染在滚动容器之外：铺满根容器，自身的内滚动才有有界高度
-        legalDoc?.let { doc ->
-            DocumentSheet(doc = doc, onClose = { legalDoc = null })
+        // 协议浮层渲染在滚动容器之外：铺满根容器，自身的内滚动才有有界高度。
+        // 打开 / 关闭带淡入淡出 + 缩放动画；关闭时 legalDoc 保留供退出动画渲染
+        AnimatedVisibility(
+            visible = sheetVisible,
+            enter = fadeIn(tween(180)) + scaleIn(
+                initialScale = 0.92f,
+                animationSpec = tween(200),
+            ),
+            exit = fadeOut(tween(140)) + scaleOut(
+                targetScale = 0.96f,
+                animationSpec = tween(160),
+            ),
+        ) {
+            legalDoc?.let { doc ->
+                DocumentSheet(doc = doc, onClose = { sheetVisible = false })
+            }
         }
     }
 }
