@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <!-- 局域网服务发现：Wi-Fi 省电模式会过滤广播/组播包，探测 UDP 应答需要
+         MulticastLock，而创建锁要求该权限（普通权限，安装即授予）。 -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
     <!-- 热更新整包升级：唤起系统安装器安装自签 APK。自签名分发不受 Play 政策影响；
          若将来上架商店必须改为商店内更新。 -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />

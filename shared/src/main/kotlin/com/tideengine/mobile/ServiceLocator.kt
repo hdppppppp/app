@@ -39,6 +39,17 @@ object ServiceLocator {
         initialized = true
     }
 
+    /**
+     * 局域网探测 / 手动配置后切换服务端地址：ApiClient 切根即可让所有仓库
+     * 生效，不重建依赖图。必须在探测结果验证通过后调用；启动探测完成前
+     * 页面被 ServerGate 拦截，不会出现「一半请求打到旧地址」的窗口。
+     */
+    fun switchBaseUrl(url: String) {
+        check(initialized) { "ServiceLocator 尚未初始化" }
+        apiBaseUrl = url.trimEnd('/')
+        api.useBaseUrl(apiBaseUrl)
+    }
+
     val isInitialized: Boolean
         get() = initialized
 }
