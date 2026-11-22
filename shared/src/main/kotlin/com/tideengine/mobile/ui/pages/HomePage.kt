@@ -3,7 +3,7 @@ package com.tideengine.mobile.ui.pages
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.calculateBottomPadding
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBars
@@ -115,70 +115,72 @@ fun HomePage(
     ) { scaffoldPadding ->
         // 内容层铺满全屏（不避让底部导航条），列表自身用 barFootprint 留出
         // 滚动末端的呼吸位——这样导航条的玻璃才能「透出」滚动中的内容
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(scheme.backgroundWithCard)
-                .layerBackdrop(backdrop)
-                .padding(top = scaffoldPadding.calculateTopPadding())
-                .imePadding(),
-        ) {
-            when (tab) {
-                HomeTab.Tasks -> TasksTab(
-                    refreshKey = refreshKey,
-                    onRefresh = { refreshKey += 1 },
-                    onSessionExpired = onSessionExpired,
-                    bottomPadding = barFootprint,
-                )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(scheme.backgroundWithCard)
+                    .layerBackdrop(backdrop)
+                    .padding(top = scaffoldPadding.calculateTopPadding())
+                    .imePadding(),
+            ) {
+                when (tab) {
+                    HomeTab.Tasks -> TasksTab(
+                        refreshKey = refreshKey,
+                        onRefresh = { refreshKey += 1 },
+                        onSessionExpired = onSessionExpired,
+                        bottomPadding = barFootprint,
+                    )
 
-                HomeTab.Accounts -> AccountsTab(
-                    refreshKey = refreshKey,
-                    onRefresh = { refreshKey += 1 },
-                    onSessionExpired = onSessionExpired,
-                    onOpenManager = onOpenManager,
-                    bottomPadding = barFootprint,
-                )
+                    HomeTab.Accounts -> AccountsTab(
+                        refreshKey = refreshKey,
+                        onRefresh = { refreshKey += 1 },
+                        onSessionExpired = onSessionExpired,
+                        onOpenManager = onOpenManager,
+                        bottomPadding = barFootprint,
+                    )
 
-                HomeTab.Logs -> LogsTab(
-                    refreshKey = refreshKey,
-                    onRefresh = { refreshKey += 1 },
-                    onSessionExpired = onSessionExpired,
-                    bottomPadding = barFootprint,
-                )
+                    HomeTab.Logs -> LogsTab(
+                        refreshKey = refreshKey,
+                        onRefresh = { refreshKey += 1 },
+                        onSessionExpired = onSessionExpired,
+                        bottomPadding = barFootprint,
+                    )
 
-                HomeTab.Profile -> ProfileTab(
-                    user = user,
-                    onUserUpdated = onUserUpdated,
-                    onSessionExpired = onSessionExpired,
-                    onLoggedOut = onSessionExpired,
-                    otherAccounts = otherAccounts,
-                    switching = switching,
-                    onAddAccount = onAddAccount,
-                    onSwitchAccount = onSwitchAccount,
-                    bottomPadding = barFootprint,
-                )
+                    HomeTab.Profile -> ProfileTab(
+                        user = user,
+                        onUserUpdated = onUserUpdated,
+                        onSessionExpired = onSessionExpired,
+                        onLoggedOut = onSessionExpired,
+                        otherAccounts = otherAccounts,
+                        switching = switching,
+                        onAddAccount = onAddAccount,
+                        onSwitchAccount = onSwitchAccount,
+                        bottomPadding = barFootprint,
+                    )
+                }
             }
-        }
-        // 悬浮胶囊导航：不占布局位，浮在内容之上；液态玻璃透出底下的内容
-        FloatingNavigationBar(
-            modifier = Modifier.align(Alignment.BottomCenter),
-            backgroundModifier = if (glass) {
-                Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(100))
-            } else {
-                Modifier
-            },
-            color = if (glass) Color.Transparent else FloatingNavigationBarDefaults.color(),
-        ) {
-            HomeTab.entries.forEach { item ->
-                FloatingNavigationBarItem(
-                    selected = tab == item,
-                    onClick = { tab = item },
-                    icon = item.icon,
-                    label = item.label,
-                    colors = FloatingNavigationBarDefaults.itemColors(
-                        selectedColor = scheme.primary,
-                    ),
-                )
+            // 悬浮胶囊导航：不占布局位，浮在内容之上；液态玻璃透出底下的内容
+            FloatingNavigationBar(
+                modifier = Modifier.align(Alignment.BottomCenter),
+                backgroundModifier = if (glass) {
+                    Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(100))
+                } else {
+                    Modifier
+                },
+                color = if (glass) Color.Transparent else FloatingNavigationBarDefaults.color(),
+            ) {
+                HomeTab.entries.forEach { item ->
+                    FloatingNavigationBarItem(
+                        selected = tab == item,
+                        onClick = { tab = item },
+                        icon = item.icon,
+                        label = item.label,
+                        colors = FloatingNavigationBarDefaults.itemColors(
+                            selectedColor = scheme.primary,
+                        ),
+                    )
+                }
             }
         }
     }
