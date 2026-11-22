@@ -2,6 +2,7 @@ package com.tideengine.mobile.api
 
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
+import io.ktor.client.plugins.UserAgent
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.header
 import io.ktor.client.request.request
@@ -29,11 +30,15 @@ import kotlinx.serialization.json.jsonObject
  * 持有的是同一个 ApiClient 实例，切根后下一次请求即生效，无需重建依赖图。
  * root 是 @Volatile，请求线程读到的一定是最新值。
  *
+ * userAgent 必须带上：服务端登录会话用它解析「登录设备」，缺失会显示成
+ * 未知浏览器（服务端 ua-parser 识别 TideEngine-Android/<版本> 前缀）。
+ *
  * 请求体先由 kotlinx.serialization 编码为字符串再发送，避免 Ktor 在
  * `setBody(Any)` 时无法从运行时类型推断 serializer。
  */
 class ApiClient(
     baseUrl: String,
+    private val userAgent: String,
     private val tokenProvider: () -> String?,
     private val onUnauthorized: () -> Unit,
 ) {
@@ -58,6 +63,9 @@ class ApiClient(
         expectSuccess = false
         install(ContentNegotiation) {
             json(json)
+        }
+        install(UserAgent) {
+            agent = userAgent
         }
     }
 

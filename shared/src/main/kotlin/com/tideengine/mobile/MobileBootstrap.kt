@@ -9,8 +9,8 @@ import com.tideengine.mobile.auth.TokenStorage
  * 安装加密 token 存储并初始化网络容器。
  */
 object MobileBootstrap {
-    fun install(context: Context, apiBaseUrl: String) {
+    fun install(context: Context, apiBaseUrl: String, userAgent: String) {
         TokenStorage.install(AndroidTokenStore(context))
-        ServiceLocator.initialize(apiBaseUrl)
+        ServiceLocator.initialize(apiBaseUrl, userAgent)
     }
 }
