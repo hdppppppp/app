@@ -174,8 +174,10 @@ private fun OptionalUpdateBanner(
             showReady = false
         }
     }
+    // AVAILABLE（检查发现新版本、尚未下载）也必须可见：否则用户永远看不到
+    // 「发现新版本」，整包更新入口就断了——此前横幅只覆盖 DOWNLOADING/READY
     val visible = when (status.stage) {
-        UpdateStage.DOWNLOADING -> true
+        UpdateStage.AVAILABLE, UpdateStage.DOWNLOADING -> true
         UpdateStage.READY -> showReady
         else -> false
     }
@@ -198,27 +200,41 @@ private fun OptionalUpdateBanner(
             Text(
                 text = when (status.stage) {
                     UpdateStage.DOWNLOADING -> "正在下载更新 ${status.progressPercent}%"
+                    UpdateStage.AVAILABLE -> "发现新版本${release?.versionName?.let { " $it" } ?: ""}"
                     else -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
                 },
                 color = scheme.labelPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            if (status.stage == UpdateStage.READY) {
-                Text(
+            when (status.stage) {
+                UpdateStage.AVAILABLE -> release?.releaseNote?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        text = it,
+                        color = scheme.labelSecondaryVariant,
+                        fontSize = 12.sp,
+                    )
+                }
+                UpdateStage.READY -> Text(
                     text = "安装包已下载并通过校验，点击立即安装",
                     color = scheme.labelSecondaryVariant,
                     fontSize = 12.sp,
                 )
+                else -> Unit
             }
             androidx.compose.foundation.layout.Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                if (status.stage == UpdateStage.DOWNLOADING) {
-                    TideGhostButton(text = "隐藏", onClick = onDismiss)
-                } else {
-                    TidePrimaryButton(text = "立即安装", onClick = onInstall)
-                    TideGhostButton(text = "稍后", onClick = onDismiss)
+                when (status.stage) {
+                    UpdateStage.AVAILABLE -> {
+                        TidePrimaryButton(text = "下载更新", onClick = onDownload)
+                        TideGhostButton(text = "稍后", onClick = onDismiss)
+                    }
+                    UpdateStage.DOWNLOADING -> TideGhostButton(text = "隐藏", onClick = onDismiss)
+                    else -> {
+                        TidePrimaryButton(text = "立即安装", onClick = onInstall)
+                        TideGhostButton(text = "稍后", onClick = onDismiss)
+                    }
                 }
             }
         }
