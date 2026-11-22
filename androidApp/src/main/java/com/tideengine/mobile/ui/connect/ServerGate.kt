@@ -35,10 +35,9 @@ import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
 import com.tideengine.mobile.ui.components.TideLogo
 import com.tideengine.mobile.ui.components.TidePrimaryButton
+import io.github.suqi8.coui.kmp.basic.InputView
 import io.github.suqi8.coui.kmp.basic.Switch
 import io.github.suqi8.coui.kmp.basic.Text
-import io.github.suqi8.coui.kmp.basic.TextField
-import io.github.suqi8.coui.kmp.basic.TextFieldMode
 import io.github.suqi8.coui.kmp.theme.COUITheme
 
 /**
@@ -197,23 +196,18 @@ private fun ManualAddressForm(
     onValueChange: (String) -> Unit,
     onConnect: () -> Unit,
 ) {
-    val scheme = COUITheme.colorScheme
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(
-            text = "输入服务端地址，例如 192.168.31.17:3100",
-            color = scheme.onSurfaceVariantSummary,
-            fontSize = 12.sp,
-        )
-        TextField(
+        InputView(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.fillMaxWidth(),
-            label = "服务地址",
-            backgroundMode = TextFieldMode.Line,
+            title = "服务地址",
+            label = "例如 192.168.31.17:3100",
             enabled = enabled,
+            showClearButton = true,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Uri,
