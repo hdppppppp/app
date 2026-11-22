@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -23,15 +24,16 @@ import com.taotao.music.update.UpdateStatus
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import io.github.suqi8.coui.kmp.basic.Text
+import io.github.suqi8.coui.kmp.overlay.OverlayProgressDialog
 import io.github.suqi8.coui.kmp.theme.COUITheme
+import io.github.suqi8.coui.kmp.theme.ThemeController
 
 /** 门禁与横幅的诊断日志 tag，与 UpdateManager 的检查日志同 tag 便于串联。 */
 private const val LOG_TAG = "TideUpdate"
 
-/** 可选更新横幅覆盖的阶段：发现新版本、下载中、已就绪、失败（非强制）。 */
+/** 可选更新横幅覆盖的阶段：发现新版本、已就绪、失败（下载中走进度对话框）。 */
 private val OPTIONAL_BANNER_STAGES = setOf(
     UpdateStage.AVAILABLE,
-    UpdateStage.DOWNLOADING,
     UpdateStage.READY,
     UpdateStage.FAILED,
 )
@@ -69,9 +71,10 @@ fun UpdateGate(
         return
     }
     content()
-    // 可选更新的横幅覆盖整个生命周期：AVAILABLE（发现新版本）→ DOWNLOADING
-    // （下载进度）→ READY（立即安装）→ FAILED（失败重试）。此前只在 AVAILABLE
-    // 阶段组合，进入下载即消失，进度与结果全部不可见（真机对接踩中）
+    // 可选更新的反馈覆盖整个生命周期：AVAILABLE（发现新版本，横幅）→ DOWNLOADING
+    // （ColorOS 进度对话框）→ READY（立即安装，横幅）→ FAILED（失败重试，横幅）。
+    // 此前只在 AVAILABLE 阶段组合横幅，进入下载即消失，进度与结果全部不可见
+    // （真机对接踩中）
     if (!status.forced && status.stage in OPTIONAL_BANNER_STAGES) {
         OptionalUpdateBanner(
             status = status,
@@ -79,6 +82,19 @@ fun UpdateGate(
             onInstall = onInstall,
             onDismiss = onDismiss,
         )
+    }
+    if (status.stage == UpdateStage.DOWNLOADING) {
+        // 下载进度用 COUI 的模态进度对话框呈现（renderInRootScaffold=false 在
+        // 本层渲染；标题色取本层主题默认值），下载期间不可关闭——后台继续
+        COUITheme(controller = remember { ThemeController() }) {
+            OverlayProgressDialog(
+                show = true,
+                progress = status.progressPercent / 100f,
+                title = "正在下载更新",
+                summary = status.release?.versionName?.let { "潮汐引擎 $it 安装包" },
+                onDismissRequest = null,
+            )
+        }
     }
 }
 
@@ -176,10 +192,10 @@ private fun OptionalUpdateBanner(
     onDismiss: () -> Unit,
 ) {
     val scheme = COUITheme.colorScheme
-    // 横幅在发现新版本 / 下载中 / 已就绪 / 失败四个阶段持续可见，直到用户点
-    // 「稍后 / 隐藏」或完成安装——解决「不知道下载到哪、装没装」
+    // 横幅在发现新版本 / 已就绪 / 失败三个阶段持续可见，直到用户点「稍后」
+    // 或完成安装——解决「不知道下载到哪、装没装」；下载中由进度对话框呈现
     val visible = when (status.stage) {
-        UpdateStage.AVAILABLE, UpdateStage.DOWNLOADING, UpdateStage.FAILED, UpdateStage.READY -> true
+        UpdateStage.AVAILABLE, UpdateStage.FAILED, UpdateStage.READY -> true
         else -> false
     }
     if (!visible) return
@@ -188,7 +204,7 @@ private fun OptionalUpdateBanner(
         modifier = Modifier
             .fillMaxSize()
             // 底部避开悬浮胶囊导航栏（56dp 胶囊 + 边距），横幅悬浮在其上方
-            .padding(horizontal = 12.dp, bottom = 88.dp),
+            .padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(
@@ -201,7 +217,6 @@ private fun OptionalUpdateBanner(
         ) {
             Text(
                 text = when (status.stage) {
-                    UpdateStage.DOWNLOADING -> "正在下载更新 ${status.progressPercent}%"
                     UpdateStage.AVAILABLE -> "发现新版本${release?.versionName?.let { " $it" } ?: ""}"
                     UpdateStage.READY -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
                     UpdateStage.FAILED -> "下载失败"
@@ -212,10 +227,6 @@ private fun OptionalUpdateBanner(
                 fontWeight = FontWeight.SemiBold,
             )
             when (status.stage) {
-                UpdateStage.DOWNLOADING -> LinearProgressIndicator(
-                    progress = status.progressPercent / 100f,
-                    modifier = Modifier.fillMaxWidth(),
-                )
                 UpdateStage.AVAILABLE -> release?.releaseNote?.takeIf { it.isNotBlank() }?.let {
                     Text(
                         text = it,
@@ -243,7 +254,6 @@ private fun OptionalUpdateBanner(
                         TidePrimaryButton(text = "下载更新", onClick = onDownload)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
                     }
-                    UpdateStage.DOWNLOADING -> TideGhostButton(text = "隐藏", onClick = onDismiss)
                     UpdateStage.FAILED -> {
                         TidePrimaryButton(text = "重试下载", onClick = onDownload)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
