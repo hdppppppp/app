@@ -4,11 +4,15 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -22,12 +26,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.connect.ServerConnectState
 import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
+import com.tideengine.mobile.ui.components.TideLogo
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import io.github.suqi8.coui.kmp.basic.Switch
 import io.github.suqi8.coui.kmp.basic.Text
@@ -82,6 +88,7 @@ private fun ConnectPage(
     var manualVisible by rememberSaveable { mutableStateOf(false) }
     var manualInput by rememberSaveable { mutableStateOf("") }
 
+    // 与登录页同一套构图：垂直居中 + 居中品牌头部 + 分层控件
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -89,32 +96,47 @@ private fun ConnectPage(
             .systemBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
-            .padding(24.dp),
+            .padding(horizontal = 24.dp, vertical = 32.dp),
         contentAlignment = Alignment.Center,
     ) {
         Column(
+            modifier = Modifier.widthIn(max = 420.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
+            TideLogo(size = 64, fontSize = 26)
+            Spacer(Modifier.height(18.dp))
             Text(
                 text = "潮汐引擎",
-                color = scheme.onBackground,
-                fontSize = 24.sp,
+                fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
+                color = scheme.onBackground,
+                textAlign = TextAlign.Center,
             )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = "正在寻找局域网内的服务端",
+                fontSize = 14.sp,
+                color = scheme.onBackgroundVariant,
+                textAlign = TextAlign.Center,
+            )
+
+            Spacer(Modifier.height(24.dp))
+
             when (state) {
-                is ServerConnectState.Discovering -> {
-                    TideLoadingRow(text = state.step)
-                }
-                is ServerConnectState.Failed -> {
-                    TideErrorBanner(message = state.message, onRetry = null)
-                }
+                is ServerConnectState.Discovering -> TideLoadingRow(text = state.step)
+                is ServerConnectState.Failed -> TideErrorBanner(
+                    message = state.message,
+                    onRetry = null,
+                )
                 else -> Unit
             }
+
             if (onRetry != null) {
+                Spacer(Modifier.height(4.dp))
                 TidePrimaryButton(text = "重新探测", onClick = onRetry)
             }
-            RestrictedModeToggle(restricted = restrictedMode, onChange = onRestrictedModeChange)
+
+            Spacer(Modifier.height(8.dp))
             if (!manualVisible) {
                 TideGhostButton(
                     text = if (onRetry == null) "手动指定服务地址" else "手动输入服务地址",
@@ -128,6 +150,9 @@ private fun ConnectPage(
                     onConnect = { onManualConnect(manualInput) },
                 )
             }
+
+            Spacer(Modifier.height(16.dp))
+            RestrictedModeToggle(restricted = restrictedMode, onChange = onRestrictedModeChange)
         }
     }
 }
@@ -144,7 +169,7 @@ private fun RestrictedModeToggle(
     onChange: (Boolean) -> Unit,
 ) {
     val scheme = COUITheme.colorScheme
-    androidx.compose.foundation.layout.Row(
+    Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,

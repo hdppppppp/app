@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -32,6 +33,25 @@ import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.basic.TextButton
 import com.tideengine.mobile.api.ApiException
 import io.github.suqi8.coui.kmp.theme.COUITheme
+
+/**
+ * 品牌 Logo：主色圆形 + 白色「潮」字，登录页 / 连接门禁页 / 启动屏共用，
+ * 保证各入口的视觉语言一致。size 是直径 dp，fontSize 是内部字号 sp。
+ */
+@Composable
+fun TideLogo(size: Int = 72, fontSize: Int = 30) {
+    Surface(
+        modifier = Modifier.size(size.dp),
+        shape = CircleShape,
+        color = COUITheme.colorScheme.primary,
+        contentColor = COUITheme.colorScheme.onPrimary,
+        shadowElevation = 2.dp,
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(text = "潮", fontSize = fontSize.sp, fontWeight = FontWeight.Bold)
+        }
+    }
+}
 
 @Composable
 fun TideCard(
