@@ -89,7 +89,7 @@ private fun LogRow(log: OperationLogDto) {
         ) {
             Text(
                 text = log.taskName.ifBlank { log.handlerType },
-                color = scheme.onSurface,
+                color = scheme.labelPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
@@ -103,7 +103,7 @@ private fun LogRow(log: OperationLogDto) {
 
         Text(
             text = "${log.action} · ${log.nickname ?: "—"} · ${formatIsoDate(log.createdAt)}",
-            color = scheme.onSurfaceVariantSummary,
+            color = scheme.labelSecondaryVariant,
             fontSize = 11.sp,
         )
 
@@ -114,7 +114,7 @@ private fun LogRow(log: OperationLogDto) {
         if (log.durationMs != null) {
             Text(
                 text = "耗时 ${log.durationMs} ms · 触发方式 ${log.triggeredBy}",
-                color = scheme.onSurfaceVariantSummary,
+                color = scheme.labelSecondaryVariant,
                 fontSize = 11.sp,
             )
         }
@@ -131,9 +131,9 @@ private fun OperationLogStatus.label(): String = when (this) {
 private fun OperationLogStatus.contentColor(): Color {
     val scheme = COUITheme.colorScheme
     return when (this) {
-        OperationLogStatus.Succeeded -> scheme.onPrimaryContainer
-        OperationLogStatus.Failed -> scheme.onErrorContainer
-        OperationLogStatus.Skipped -> scheme.onSurfaceVariantSummary
+        OperationLogStatus.Succeeded -> scheme.labelOnColor
+        OperationLogStatus.Failed -> scheme.error
+        OperationLogStatus.Skipped -> scheme.labelSecondaryVariant
     }
 }
 
@@ -141,8 +141,8 @@ private fun OperationLogStatus.contentColor(): Color {
 private fun OperationLogStatus.containerColor(): Color {
     val scheme = COUITheme.colorScheme
     return when (this) {
-        OperationLogStatus.Succeeded -> scheme.primaryContainer
-        OperationLogStatus.Failed -> scheme.errorContainer
-        OperationLogStatus.Skipped -> scheme.surfaceContainerHigh
+        OperationLogStatus.Succeeded -> scheme.containerTheme
+        OperationLogStatus.Failed -> scheme.errorTextBg
+        OperationLogStatus.Skipped -> scheme.cardBackground
     }
 }

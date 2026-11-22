@@ -204,13 +204,13 @@ fun ProfileTab(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = user.displayName,
-                            color = scheme.onSurface,
+                            color = scheme.labelPrimary,
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         )
                         Text(
                             text = "@${user.username}",
-                            color = scheme.onSurfaceVariantSummary,
+                            color = scheme.labelSecondaryVariant,
                             fontSize = 12.sp,
                         )
                     }
@@ -258,7 +258,7 @@ fun ProfileTab(
                 }
                 Text(
                     text = "支持 JPG、PNG 或 WebP，保存前会自动裁切为正方形并压缩。",
-                    color = scheme.onSurfaceVariantSummary,
+                    color = scheme.labelSecondaryVariant,
                     fontSize = 12.sp,
                 )
                 avatarError?.let { TideErrorBanner(message = it) }
@@ -270,7 +270,7 @@ fun ProfileTab(
             TideCard {
                 Text(
                     text = "修改密码",
-                    color = scheme.onSurface,
+                    color = scheme.labelPrimary,
                     fontSize = 15.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
