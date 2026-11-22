@@ -3,6 +3,7 @@
 import android.content.Context
 import android.content.pm.PackageInfo
 import android.os.Build
+import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -20,6 +21,9 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
+
+/** 检查链路的诊断日志 tag：模块自身零日志，链路出问题全靠它定位。 */
+private const val LOG_TAG = "TideUpdate"
 
 /**
  * 热更新流程编排：检查、下载、安装。
@@ -150,10 +154,18 @@ class UpdateManager(
                 }
             }.getOrElse {
                 // 失败时回到检查前的状态，而不是造一个全新的 UP_TO_DATE。
+                // 后台失败本应静默，但检查链路一旦有问题就是全黑，诊断日志
+                // 是唯一线索（tag 见 Companion 的 LOG_TAG）
+                Log.w(LOG_TAG, "bootstrap failed: ${it.message}")
                 publishStatus(if (previous.stage == UpdateStage.CHECKING) UpdateStatus(stage = UpdateStage.UP_TO_DATE) else previous)
                 if (manual) publishManualResult("检查更新失败，请稍后再试")
                 return
             }
+            Log.i(
+                LOG_TAG,
+                "bootstrap ok: installed=$installedVersionCode release=${result.release?.versionCode} " +
+                    "forced=${result.forced} dismissed=${dismissedVersionCode()}",
+            )
 
             withContext(Dispatchers.IO) { remoteConfig.save(result.config, result.configVersion) }
 
@@ -170,12 +182,14 @@ class UpdateManager(
             val release = result.release
             if (release == null || release.versionCode <= installedVersionCode) {
                 // 服务端不该下发不高于当前版本的包，真出现时按无更新处理，避免死循环提示。
+                Log.i(LOG_TAG, "no update: release=${release?.versionCode} installed=$installedVersionCode")
                 publishStatus(UpdateStatus(stage = UpdateStage.UP_TO_DATE))
                 if (manual) publishManualResult("已是最新版本 $installedVersionName")
                 return
             }
             // 用户划掉过这个版本就不再自动弹；手动检查视为明确想看，忽略这条记录。
             if (!manual && !result.forced && release.versionCode == dismissedVersionCode()) {
+                Log.i(LOG_TAG, "release ${release.versionCode} dismissed by user, suppressed")
                 publishStatus(UpdateStatus(stage = UpdateStage.UP_TO_DATE))
                 return
             }
