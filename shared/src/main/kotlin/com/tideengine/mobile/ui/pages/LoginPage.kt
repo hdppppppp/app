@@ -146,7 +146,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { identifier = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "账号",
-                    label = "邮箱或用户名",
+                    // 卡内已有标题，不再叠灰色 hint（空内容提示冗余）
                     enabled = !loading,
                     errorMessage = error.orEmpty(),
                     colors = inputColors,
@@ -161,7 +161,6 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "密码",
-                    label = "请输入密码",
                     enabled = !loading,
                     showPasswordToggle = true,
                     colors = inputColors,
