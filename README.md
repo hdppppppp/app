@@ -24,13 +24,13 @@ mobile/
 | Kotlin | 2.4.21 |
 | AGP | 9.3.1 |
 | Gradle | 9.6.1 |
-| COUI | 1.1.0 |
+| COUI | 2.1.0 |
 | Compose Multiplatform | 1.11.1 |
 | JDK | 17 |
 | compileSdk / targetSdk / minSdk | 37 / 34 / 26 |
 | Build Tools | 36.0.0 |
 
-COUI 1.1.0 的 Android AAR 声明 `minCompileSdk=37`，因此必须使用 compileSdk 37
+COUI 2.1.0 的 Android AAR 声明 `minCompileSdk=37`，因此必须使用 compileSdk 37
 与 AGP 9.3.1。AGP 9 默认会启用内置 Kotlin 与新 DSL；本项目在
 `gradle.properties` 中设置 `android.builtInKotlin=false`、`android.newDsl=false`，
 继续使用 Kotlin Gradle Plugin 2.4.21，才能读取 COUI 的 Kotlin 2.4 元数据。
