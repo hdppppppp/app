@@ -18,7 +18,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,20 +33,14 @@ import com.tideengine.mobile.ui.pages.LoginPage
 import io.github.suqi8.coui.kmp.basic.Surface
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import io.github.suqi8.coui.kmp.theme.ColorSchemeMode
 import io.github.suqi8.coui.kmp.theme.ThemeController
 import kotlinx.coroutines.CancellationException
 
 @Composable
 fun TideApp(onOpenManager: (String) -> Unit) {
-    COUITheme(
-        controller = remember {
-            ThemeController(
-                colorSchemeMode = ColorSchemeMode.MonetSystem,
-                keyColor = Color(0xFFC95735),
-            )
-        },
-    ) {
+    // 默认配色：COUI 标准 System 模式（跟随系统深浅色，不用暖色 keyColor
+    // 播种，避免整体偏黄）
+    COUITheme(controller = remember { ThemeController() }) {
         TideAppContent(onOpenManager = onOpenManager)
     }
 }
