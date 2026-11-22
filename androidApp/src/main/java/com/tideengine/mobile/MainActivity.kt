@@ -21,8 +21,11 @@ class MainActivity : ComponentActivity() {
             // 服务端连接门禁：探测完成前拦截主界面，避免业务请求打到构建期
             // 兜底地址（探测命中的地址才会写入 ServiceLocator）。
             val connectState by application.serverConnect.state.collectAsState()
+            val restricted by application.serverConnect.discoveryRestricted.collectAsState()
             ServerGate(
                 state = connectState,
+                restrictedMode = restricted,
+                onRestrictedModeChange = { application.serverConnect.setDiscoveryRestricted(it) },
                 onRetry = { application.serverConnect.retry() },
                 onManualConnect = { application.serverConnect.connectManually(it) },
             ) {

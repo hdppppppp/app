@@ -29,6 +29,7 @@ import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
 import com.tideengine.mobile.ui.components.TidePrimaryButton
+import io.github.suqi8.coui.kmp.basic.Switch
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.basic.TextField
 import io.github.suqi8.coui.kmp.basic.TextFieldMode
@@ -44,6 +45,8 @@ import io.github.suqi8.coui.kmp.theme.COUITheme
 @Composable
 fun ServerGate(
     state: ServerConnectState,
+    restrictedMode: Boolean,
+    onRestrictedModeChange: (Boolean) -> Unit,
     onRetry: () -> Unit,
     onManualConnect: (String) -> Unit,
     content: @Composable () -> Unit,
@@ -52,11 +55,15 @@ fun ServerGate(
         is ServerConnectState.Ready -> content()
         is ServerConnectState.Discovering -> ConnectPage(
             state = state,
+            restrictedMode = restrictedMode,
+            onRestrictedModeChange = onRestrictedModeChange,
             onRetry = null,
             onManualConnect = onManualConnect,
         )
         is ServerConnectState.Failed -> ConnectPage(
             state = state,
+            restrictedMode = restrictedMode,
+            onRestrictedModeChange = onRestrictedModeChange,
             onRetry = onRetry,
             onManualConnect = onManualConnect,
         )
@@ -66,6 +73,8 @@ fun ServerGate(
 @Composable
 private fun ConnectPage(
     state: ServerConnectState,
+    restrictedMode: Boolean,
+    onRestrictedModeChange: (Boolean) -> Unit,
     onRetry: (() -> Unit)?,
     onManualConnect: (String) -> Unit,
 ) {
@@ -105,6 +114,7 @@ private fun ConnectPage(
             if (onRetry != null) {
                 TidePrimaryButton(text = "重新探测", onClick = onRetry)
             }
+            RestrictedModeToggle(restricted = restrictedMode, onChange = onRestrictedModeChange)
             if (!manualVisible) {
                 TideGhostButton(
                     text = if (onRetry == null) "手动指定服务地址" else "手动输入服务地址",
@@ -119,6 +129,39 @@ private fun ConnectPage(
                 )
             }
         }
+    }
+}
+
+/**
+ * 公共网络模式开关：开启后跳过 UDP 广播与子网扫描，只信任记忆地址、构建期
+ * 默认值与手动输入 —— 不可信 Wi-Fi 下恶意设备可以伪装探测应答把登录凭据
+ * 引到假服务端，这是局域网发现机制的固有短板，开关是显式的用户逃生通道。
+ * 切换会立即保存并按新模式重新探测。
+ */
+@Composable
+private fun RestrictedModeToggle(
+    restricted: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    val scheme = COUITheme.colorScheme
+    androidx.compose.foundation.layout.Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "公共网络模式",
+                color = scheme.onSurface,
+                fontSize = 14.sp,
+            )
+            Text(
+                text = "不发广播、不扫描网段，仅记忆地址或手动输入。公共 Wi-Fi 下建议开启。",
+                color = scheme.onSurfaceVariantSummary,
+                fontSize = 11.sp,
+            )
+        }
+        Switch(checked = restricted, onCheckedChange = onChange)
     }
 }
 

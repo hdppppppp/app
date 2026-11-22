@@ -31,9 +31,13 @@ class TideApplication : Application() {
         //    探测就绪后再发起（onReady 回调），否则检查会打到构建期兜底地址。
         activePatchVersion = HotUpdate.installPatches(this)
         hotUpdate = HotUpdate.create(this, TideUpdateHost(this), initialPatchVersion = activePatchVersion)
+        // 地址与发现模式共用一份 SharedPreferences 实现（同一实例同时满足
+        // ServerAddressStore 与 DiscoveryModeStore 两个窄接口）
+        val serverAddressStore = SharedPreferencesServerAddressStore(this)
         serverConnect = ServerConnectManager(
             defaultBaseUrl = BuildConfig.API_BASE_URL,
-            store = SharedPreferencesServerAddressStore(this),
+            store = serverAddressStore,
+            modeStore = serverAddressStore,
             networkLock = MulticastNetworkLock(this),
             onReady = { hotUpdate.launchCheck() },
         )
