@@ -1,5 +1,12 @@
 package com.tideengine.mobile.ui.pages
 
+
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -59,6 +66,8 @@ fun ProfileTab(
     onAddAccount: () -> Unit = {},
     onSwitchAccount: (SavedAccount) -> Unit = {},
     bottomPadding: Dp = 0.dp,
+    editingProfile: Boolean = false,
+    onEditingProfileChange: (Boolean) -> Unit = {},
 ) {
     val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -73,9 +82,6 @@ fun ProfileTab(
     var error by remember { mutableStateOf<String?>(null) }
     var notice by remember { mutableStateOf<String?>(null) }
     var confirmLogout by remember { mutableStateOf(false) }
-
-    // 编辑资料为「我的」内的子页：进入后整页替换为 EditProfilePage
-    var editingProfile by remember { mutableStateOf(false) }
 
     fun changePassword() {
         if (currentPassword.text.isBlank() || newPassword.text.length < 8) {
@@ -110,76 +116,71 @@ fun ProfileTab(
         onLoggedOut()
     }
 
-    if (editingProfile) {
-        EditProfilePage(
-            user = user,
-            onUserUpdated = onUserUpdated,
-            onSessionExpired = onSessionExpired,
-            onBack = { editingProfile = false },
-        )
-        return
-    }
+    // 子页以侧滑进入 / 退出（AnimatedVisibility），系统返回手势经 BackHandler
+    // 关闭子页而不是退出应用
+    BackHandler(enabled = editingProfile) { onEditingProfileChange(false) }
 
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 12.dp,
-            bottom = 12.dp + bottomPadding,
-        ),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        item {
-            TideCard {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    // 头像：圆角方形（ColorOS 卡片风格），与编辑资料页一致
-                    Surface(
-                        modifier = Modifier.size(52.dp),
-                        shape = RoundedCornerShape(16.dp),
-                        color = scheme.primary,
-                        contentColor = scheme.onPrimary,
-                        shadowElevation = 0.dp,
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 12.dp,
+                bottom = 12.dp + bottomPadding,
+            ),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            item {
+                TideCard {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        AvatarImage(
-                            url = user.avatarUrl,
-                            fallback = {
-                                Text(
-                                    text = user.displayName.take(1).uppercase(),
-                                    fontSize = 20.sp,
-                                    fontWeight = FontWeight.Bold,
-                                )
-                            },
+                        // 头像：圆角方形（ColorOS 卡片风格），与编辑资料页一致
+                        Surface(
+                            modifier = Modifier.size(52.dp),
+                            shape = RoundedCornerShape(16.dp),
+                            color = scheme.primary,
+                            contentColor = scheme.onPrimary,
+                            shadowElevation = 0.dp,
+                        ) {
+                            AvatarImage(
+                                url = user.avatarUrl,
+                                fallback = {
+                                    Text(
+                                        text = user.displayName.take(1).uppercase(),
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                },
+                            )
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = user.displayName,
+                                color = scheme.labelPrimary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                            Text(
+                                text = "@${user.username}",
+                                color = scheme.labelSecondaryVariant,
+                                fontSize = 12.sp,
+                            )
+                        }
+
+                        // 编辑资料入口（头像 / 昵称在子页内修改）
+                        TideGhostButton(
+                            text = "编辑资料",
+                            onClick = { onEditingProfileChange(true) },
                         )
                     }
 
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = user.displayName,
-                            color = scheme.labelPrimary,
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "@${user.username}",
-                            color = scheme.labelSecondaryVariant,
-                            fontSize = 12.sp,
-                        )
-                    }
-
-                    // 编辑资料入口（头像 / 昵称在子页内修改）
-                    TideGhostButton(
-                        text = "编辑资料",
-                        onClick = { editingProfile = true },
-                    )
+                    TideStatRow(label = "邮箱", value = user.email)
                 }
-
-                TideStatRow(label = "邮箱", value = user.email)
             }
-        }
 
         item {
             TideCard {
@@ -311,6 +312,21 @@ fun ProfileTab(
                     )
                 }
             }
+        }
+    }
+
+        // 编辑资料子页：侧滑进入 / 退出，覆盖在「我的」内容之上
+        AnimatedVisibility(
+            visible = editingProfile,
+            enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(tween(220)),
+            exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(tween(180)),
+        ) {
+            EditProfilePage(
+                user = user,
+                onUserUpdated = onUserUpdated,
+                onSessionExpired = onSessionExpired,
+                onBack = { onEditingProfileChange(false) },
+            )
         }
     }
 }
