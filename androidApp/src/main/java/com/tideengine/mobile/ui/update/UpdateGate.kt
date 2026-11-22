@@ -224,13 +224,6 @@ private fun OptionalUpdateBanner(
                 )
             }
             when (status.stage) {
-                UpdateStage.AVAILABLE -> release?.releaseNote?.takeIf { it.isNotBlank() }?.let {
-                    Text(
-                        text = it,
-                        color = scheme.labelSecondaryVariant,
-                        fontSize = 12.sp,
-                    )
-                }
                 UpdateStage.READY -> Text(
                     text = "安装包已下载并通过校验，点击立即安装",
                     color = scheme.labelSecondaryVariant,
@@ -247,8 +240,9 @@ private fun OptionalUpdateBanner(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 when (status.stage) {
+                    // 可用态用紧凑文字按钮：大蓝主按钮压在列表上太突兀
                     UpdateStage.AVAILABLE -> {
-                        TidePrimaryButton(text = "下载更新", onClick = onDownload)
+                        TideGhostButton(text = "下载", onClick = onDownload)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
                     }
                     UpdateStage.DOWNLOADING -> TideGhostButton(text = "隐藏", onClick = onDismiss)
