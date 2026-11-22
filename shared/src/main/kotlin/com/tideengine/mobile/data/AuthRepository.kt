@@ -62,6 +62,8 @@ class AuthRepository(private val api: ApiClient) {
         TokenStorage.clear()
     }
 
+    fun hasToken(): Boolean = !TokenStorage.load().isNullOrBlank()
+
     /** 排除当前账号外的其他已记住账号（切换列表用）。 */
     fun otherAccounts(currentUserId: String): List<SavedAccount> =
         AccountVaultStorage.loadAccounts().filter { it.userId != currentUserId }
