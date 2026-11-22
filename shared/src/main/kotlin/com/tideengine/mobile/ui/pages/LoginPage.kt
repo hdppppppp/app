@@ -50,7 +50,7 @@ import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.legal.PRIVACY_POLICY
 import com.tideengine.mobile.ui.legal.USER_AGREEMENT
-import com.tideengine.mobile.ui.legal.toPlainText
+import com.tideengine.mobile.ui.legal.toAnnotatedString
 import io.github.suqi8.coui.kmp.basic.Checkbox
 import io.github.suqi8.coui.kmp.basic.FullPageStatement
 import io.github.suqi8.coui.kmp.basic.InputView
@@ -255,7 +255,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
             legalDoc?.let { doc ->
                 FullPageStatement(
                     title = doc.title,
-                    content = doc.toPlainText(),
+                    content = doc.toAnnotatedString(),
                     primaryButtonText = "我知道了",
                     onPrimaryButtonClick = { sheetVisible = false },
                     modifier = Modifier

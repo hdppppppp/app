@@ -1,10 +1,16 @@
 package com.tideengine.mobile.ui.legal
 
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
+
 /**
  * 用户协议 / 隐私政策文案：与 Web 端 client/src/pages/AgreementsPage.tsx 逐字一致
  * （服务端行为变化时两边必须同步更新）。App 内置展示，不做网页跳转。
  *
- * 结构化存储（段落 / 列表块），由 DocumentSheet 渲染，保持与 Web 相同的文档层次。
+ * 结构化存储（段落 / 列表块），由 FullPageStatement 以 toAnnotatedString() 渲染，层次与 Web 端一致。
  */
 
 /** 文档内容块：段落或项目符号列表，保持渲染结构简单可控。 */
@@ -27,7 +33,7 @@ data class AgreementDoc(
  * 文档转纯文本（COUI FullPageStatement 的 content 是 String）：条目用
  * 「·」前缀、章节标题独立成行，层次靠换行表达。
  */
-fun AgreementDoc.toPlainText(): String = buildString {
+fun AgreementDoc.toAnnotatedString(): AnnotatedString = buildAnnotatedString {
     append(intro)
     append("\n\n")
     sections.forEachIndexed { index, section ->

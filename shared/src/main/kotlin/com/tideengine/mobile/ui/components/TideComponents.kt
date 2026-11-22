@@ -108,7 +108,7 @@ fun TideGhostButton(
             disabledColor = scheme.cardBackground,
             disabledTextColor = scheme.disabledNeutral,
         ),
-        textStyle = COUITheme.textStyles.button.copy(
+        textStyle = COUITheme.textStyles.buttonL.copy(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
         ),
