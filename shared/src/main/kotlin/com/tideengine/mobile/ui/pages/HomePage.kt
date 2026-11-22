@@ -13,6 +13,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tideengine.mobile.api.dto.PublicUser
+import com.tideengine.mobile.auth.SavedAccount
 import io.github.suqi8.coui.kmp.basic.ButtonDefaults
 import io.github.suqi8.coui.kmp.basic.FloatingNavigationBar
 import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarDefaults
@@ -40,6 +41,10 @@ fun HomePage(
     onSessionExpired: () -> Unit,
     onOpenManager: (String) -> Unit,
     onUserUpdated: (PublicUser) -> Unit = {},
+    otherAccounts: List<SavedAccount> = emptyList(),
+    switching: Boolean = false,
+    onAddAccount: () -> Unit = {},
+    onSwitchAccount: (SavedAccount) -> Unit = {},
 ) {
     val scheme = COUITheme.colorScheme
     var tab by remember { mutableStateOf(HomeTab.Tasks) }
@@ -119,6 +124,10 @@ fun HomePage(
                     onUserUpdated = onUserUpdated,
                     onSessionExpired = onSessionExpired,
                     onLoggedOut = onSessionExpired,
+                    otherAccounts = otherAccounts,
+                    switching = switching,
+                    onAddAccount = onAddAccount,
+                    onSwitchAccount = onSwitchAccount,
                 )
             }
         }

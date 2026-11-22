@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -24,6 +25,7 @@ import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.PublicUser
+import com.tideengine.mobile.auth.SavedAccount
 import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideLoadingRow
@@ -35,6 +37,7 @@ import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import io.github.suqi8.coui.kmp.theme.ThemeController
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.launch
 
 @Composable
 fun TideApp(onOpenManager: (String) -> Unit) {
@@ -51,6 +54,30 @@ private fun TideAppContent(onOpenManager: (String) -> Unit) {
     var checking by remember { mutableStateOf(true) }
     var bootError by remember { mutableStateOf<String?>(null) }
     var bootKey by remember { mutableIntStateOf(0) }
+    // 添加账号模式：当前账号保持登录，展示登录页登录另一个账号后自动切换过去
+    var addingAccount by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun switchTo(entry: SavedAccount) {
+        if (switching) return
+        switching = true
+        scope.launch {
+            try {
+                user = ServiceLocator.auth.switchAccount(entry.userId)
+            } catch (throwable: Throwable) {
+                if (throwable is CancellationException) throw throwable
+                if (throwable is ApiException && throwable.isUnauthorized) {
+                    // 目标账号登录态已失效：移除条目、恢复当前账号 token，回到登录页
+                    ServiceLocator.auth.removeSavedAccount(entry.userId)
+                    ServiceLocator.auth.restoreActiveToken(user?.id ?: "")
+                    addingAccount = true
+                }
+            } finally {
+                switching = false
+            }
+        }
+    }
 
     LaunchedEffect(bootKey) {
         checking = true
@@ -95,7 +122,12 @@ private fun TideAppContent(onOpenManager: (String) -> Unit) {
             },
         )
 
-        user == null -> LoginPage(onAuthenticated = { user = it })
+        user == null || addingAccount -> LoginPage(
+            onAuthenticated = {
+                addingAccount = false
+                user = it
+            },
+        )
         else -> HomePage(
             user = user!!,
             onSessionExpired = {
@@ -105,6 +137,12 @@ private fun TideAppContent(onOpenManager: (String) -> Unit) {
             },
             onOpenManager = onOpenManager,
             onUserUpdated = { user = it },
+            otherAccounts = remember(user) {
+                ServiceLocator.auth.otherAccounts(user!!.id)
+            },
+            switching = switching,
+            onAddAccount = { addingAccount = true },
+            onSwitchAccount = ::switchTo,
         )
     }
 }
