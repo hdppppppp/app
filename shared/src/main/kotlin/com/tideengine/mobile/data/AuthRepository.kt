@@ -8,6 +8,7 @@ import com.tideengine.mobile.api.dto.LoginRequest
 import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.api.dto.SuccessResponse
 import com.tideengine.mobile.api.dto.UpdateAvatarRequest
+import com.tideengine.mobile.api.dto.UpdateProfileRequest
 import com.tideengine.mobile.auth.AccountVaultStorage
 import com.tideengine.mobile.auth.SavedAccount
 import com.tideengine.mobile.auth.TokenStorage
@@ -51,6 +52,16 @@ class AuthRepository(private val api: ApiClient) {
             "/api/auth/password",
             ChangePasswordRequest(currentPassword = currentPassword, newPassword = newPassword),
         )
+    }
+
+    /** 与 Web 端一致：仅更新显示名称（邮箱当前不支持自助修改）。 */
+    suspend fun updateProfile(displayName: String): PublicUser {
+        val updated = api.patchJson<UpdateProfileRequest, PublicUser>(
+            "/api/auth/profile",
+            UpdateProfileRequest(displayName = displayName),
+        )
+        syncVaultUser(updated)
+        return updated
     }
 
     /**

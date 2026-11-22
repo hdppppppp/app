@@ -1,18 +1,18 @@
 package com.tideengine.mobile.ui.pages
 
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,7 +22,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.Dp
@@ -31,8 +30,6 @@ import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.PublicUser
-import com.tideengine.mobile.api.dto.UserRole
-import com.tideengine.mobile.api.dto.UserStatus
 import com.tideengine.mobile.auth.SavedAccount
 import com.tideengine.mobile.ui.components.AvatarImage
 import com.tideengine.mobile.ui.components.TideCard
@@ -42,10 +39,7 @@ import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TideNoticeBanner
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.TideStatRow
-import com.tideengine.mobile.ui.components.TideTag
-import com.tideengine.mobile.ui.components.createAvatarDataUrl
 import com.tideengine.mobile.ui.components.errorText
-import com.tideengine.mobile.ui.components.formatIsoDate
 import io.github.suqi8.coui.kmp.basic.Surface
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.basic.TextField
@@ -68,7 +62,6 @@ fun ProfileTab(
 ) {
     val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     var currentPassword by rememberSaveable(stateSaver = TextFieldValue.Saver) {
         mutableStateOf(TextFieldValue(""))
@@ -81,10 +74,8 @@ fun ProfileTab(
     var notice by remember { mutableStateOf<String?>(null) }
     var confirmLogout by remember { mutableStateOf(false) }
 
-    var avatarBusy by remember { mutableStateOf(false) }
-    var confirmResetAvatar by remember { mutableStateOf(false) }
-    var avatarError by remember { mutableStateOf<String?>(null) }
-    var avatarNotice by remember { mutableStateOf<String?>(null) }
+    // 编辑资料为「我的」内的子页：进入后整页替换为 EditProfilePage
+    var editingProfile by remember { mutableStateOf(false) }
 
     fun changePassword() {
         if (currentPassword.text.isBlank() || newPassword.text.length < 8) {
@@ -119,63 +110,14 @@ fun ProfileTab(
         onLoggedOut()
     }
 
-    suspend fun uploadAvatar(uri: Uri) {
-        avatarBusy = true
-        avatarError = null
-        avatarNotice = null
-        confirmResetAvatar = false
-        try {
-            val avatar = createAvatarDataUrl(context, uri)
-            val updated = ServiceLocator.auth.updateAvatar(avatar)
-            avatarNotice = "头像已更新"
-            onUserUpdated(updated)
-        } catch (throwable: Throwable) {
-            if (throwable is CancellationException) throw throwable
-            if (throwable is ApiException && throwable.isUnauthorized) {
-                onSessionExpired()
-            } else {
-                avatarError = errorText(throwable)
-            }
-        } finally {
-            avatarBusy = false
-        }
-    }
-
-    val pickAvatarImage = rememberLauncherForActivityResult(
-        ActivityResultContracts.PickVisualMedia(),
-    ) { uri ->
-        if (uri != null) {
-            scope.launch { uploadAvatar(uri) }
-        }
-    }
-
-    fun pickAvatar() {
-        if (avatarBusy) return
-        pickAvatarImage.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-    }
-
-    fun resetAvatar() {
-        if (avatarBusy) return
-        confirmResetAvatar = false
-        avatarError = null
-        avatarNotice = null
-        avatarBusy = true
-        scope.launch {
-            try {
-                val updated = ServiceLocator.auth.resetAvatar()
-                avatarNotice = "已恢复默认头像"
-                onUserUpdated(updated)
-            } catch (throwable: Throwable) {
-                if (throwable is CancellationException) throw throwable
-                if (throwable is ApiException && throwable.isUnauthorized) {
-                    onSessionExpired()
-                } else {
-                    avatarError = errorText(throwable)
-                }
-            } finally {
-                avatarBusy = false
-            }
-        }
+    if (editingProfile) {
+        EditProfilePage(
+            user = user,
+            onUserUpdated = onUserUpdated,
+            onSessionExpired = onSessionExpired,
+            onBack = { editingProfile = false },
+        )
+        return
     }
 
     LazyColumn(
@@ -194,9 +136,10 @@ fun ProfileTab(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
+                    // 头像：圆角方形（ColorOS 卡片风格），与编辑资料页一致
                     Surface(
                         modifier = Modifier.size(52.dp),
-                        shape = CircleShape,
+                        shape = RoundedCornerShape(16.dp),
                         color = scheme.primary,
                         contentColor = scheme.onPrimary,
                         shadowElevation = 0.dp,
@@ -227,54 +170,14 @@ fun ProfileTab(
                         )
                     }
 
-                    TideTag(text = user.role.label())
+                    // 编辑资料入口（头像 / 昵称在子页内修改）
+                    TideGhostButton(
+                        text = "编辑资料",
+                        onClick = { editingProfile = true },
+                    )
                 }
 
                 TideStatRow(label = "邮箱", value = user.email)
-                TideStatRow(label = "角色", value = user.role.label())
-                TideStatRow(label = "状态", value = user.status.label())
-                TideStatRow(label = "上次登录", value = formatIsoDate(user.lastLoginAt))
-
-                TideDivider()
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TideGhostButton(
-                        text = if (user.avatarUrl.isNullOrEmpty()) "上传头像" else "更换头像",
-                        enabled = !avatarBusy,
-                        onClick = { pickAvatar() },
-                    )
-                    if (!user.avatarUrl.isNullOrEmpty()) {
-                        TideGhostButton(
-                            text = "恢复默认",
-                            enabled = !avatarBusy,
-                            danger = true,
-                            onClick = { confirmResetAvatar = !confirmResetAvatar },
-                        )
-                    }
-                }
-                if (confirmResetAvatar) {
-                    Text(
-                        text = "确认恢复默认头像？",
-                        color = scheme.error,
-                        fontSize = 12.sp,
-                    )
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TideGhostButton(text = "取消", onClick = { confirmResetAvatar = false })
-                        TideGhostButton(
-                            text = "确认恢复",
-                            danger = true,
-                            enabled = !avatarBusy,
-                            onClick = { resetAvatar() },
-                        )
-                    }
-                }
-                Text(
-                    text = "支持 JPG、PNG 或 WebP，保存前会自动裁切为正方形并压缩。",
-                    color = scheme.labelSecondaryVariant,
-                    fontSize = 12.sp,
-                )
-                avatarError?.let { TideErrorBanner(message = it) }
-                avatarNotice?.let { TideNoticeBanner(message = it) }
             }
         }
 
@@ -410,15 +313,4 @@ fun ProfileTab(
             }
         }
     }
-}
-
-private fun UserRole.label(): String = when (this) {
-    UserRole.Admin -> "管理员"
-    UserRole.Editor -> "编辑者"
-    UserRole.Viewer -> "只读成员"
-}
-
-private fun UserStatus.label(): String = when (this) {
-    UserStatus.Active -> "正常"
-    UserStatus.Disabled -> "已禁用"
 }
