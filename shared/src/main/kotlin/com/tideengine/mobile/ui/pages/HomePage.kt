@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import com.tideengine.mobile.api.dto.PublicUser
 import io.github.suqi8.coui.kmp.basic.ButtonDefaults
 import io.github.suqi8.coui.kmp.basic.FloatingNavigationBar
+import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarDefaults
 import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarItem
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SmallTopAppBar
@@ -69,7 +70,9 @@ fun HomePage(
             )
         },
         bottomBar = {
-            // COUI 17 悬浮胶囊导航栏（组件自带底栏材质，随选中项形变）
+            // COUI 17 悬浮胶囊导航栏（组件自带底栏材质，随选中项形变）。
+            // 组件默认的选中 / 未选中只差一层透明度（E6 vs B8 黑），肉眼几乎
+            // 分不清当前页 —— 选中项显式用主题色加强指示
             FloatingNavigationBar {
                 HomeTab.entries.forEach { item ->
                     FloatingNavigationBarItem(
@@ -77,6 +80,9 @@ fun HomePage(
                         onClick = { tab = item },
                         icon = item.icon,
                         label = item.label,
+                        colors = FloatingNavigationBarDefaults.itemColors(
+                            selectedColor = scheme.primary,
+                        ),
                     )
                 }
             }
