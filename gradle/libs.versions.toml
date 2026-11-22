@@ -30,6 +30,7 @@ androidx-activity-compose = { module = "androidx.activity:activity-compose", ver
 material = { module = "com.google.android.material:material", version.ref = "material" }
 coui-ui = { module = "io.github.suqi8.coui.kmp:coui-ui-android", version.ref = "coui" }
 coui-icons = { module = "io.github.suqi8.coui.kmp:coui-icons-android", version.ref = "coui" }
+coui-blur = { module = "io.github.suqi8.coui.kmp:coui-blur-android", version.ref = "coui" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

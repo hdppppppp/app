@@ -1,17 +1,25 @@
 package com.tideengine.mobile.ui.pages
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.calculateBottomPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.auth.SavedAccount
 import io.github.suqi8.coui.kmp.basic.ButtonDefaults
@@ -21,6 +29,10 @@ import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarItem
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SmallTopAppBar
 import io.github.suqi8.coui.kmp.basic.TextButton
+import io.github.suqi8.coui.kmp.blur.isRuntimeShaderSupported
+import io.github.suqi8.coui.kmp.blur.layerBackdrop
+import io.github.suqi8.coui.kmp.blur.rememberLayerBackdrop
+import io.github.suqi8.coui.kmp.blur.textureBlur
 import io.github.suqi8.coui.kmp.icon.COUIIcons
 import io.github.suqi8.coui.kmp.icon.extended.Contacts
 import io.github.suqi8.coui.kmp.icon.extended.Notes
@@ -49,6 +61,14 @@ fun HomePage(
     val scheme = COUITheme.colorScheme
     var tab by remember { mutableStateOf(HomeTab.Tasks) }
     var refreshKey by remember { mutableIntStateOf(0) }
+
+    // 液态玻璃：Scaffold 内容整体录入 LayerBackdrop，悬浮导航条以 textureBlur
+    // 取景「自己背后的内容」——滚动列表会从胶囊底下穿过。RuntimeShader 仅
+    // API 33+ 可用，低版本设备回退组件默认实心底（不透明，不透内容）。
+    val backdrop = rememberLayerBackdrop()
+    val glass = isRuntimeShaderSupported()
+    val navBottomInset = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val barFootprint = 104.dp + navBottomInset
 
     Scaffold(
         containerColor = scheme.backgroundWithCard,
@@ -93,10 +113,14 @@ fun HomePage(
             }
         },
     ) { scaffoldPadding ->
+        // 内容层铺满全屏（不避让底部导航条），列表自身用 barFootprint 留出
+        // 滚动末端的呼吸位——这样导航条的玻璃才能「透出」滚动中的内容
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(scaffoldPadding)
+                .background(scheme.backgroundWithCard)
+                .layerBackdrop(backdrop)
+                .padding(top = scaffoldPadding.calculateTopPadding())
                 .imePadding(),
         ) {
             when (tab) {
@@ -104,6 +128,7 @@ fun HomePage(
                     refreshKey = refreshKey,
                     onRefresh = { refreshKey += 1 },
                     onSessionExpired = onSessionExpired,
+                    bottomPadding = barFootprint,
                 )
 
                 HomeTab.Accounts -> AccountsTab(
@@ -111,12 +136,14 @@ fun HomePage(
                     onRefresh = { refreshKey += 1 },
                     onSessionExpired = onSessionExpired,
                     onOpenManager = onOpenManager,
+                    bottomPadding = barFootprint,
                 )
 
                 HomeTab.Logs -> LogsTab(
                     refreshKey = refreshKey,
                     onRefresh = { refreshKey += 1 },
                     onSessionExpired = onSessionExpired,
+                    bottomPadding = barFootprint,
                 )
 
                 HomeTab.Profile -> ProfileTab(
@@ -128,6 +155,29 @@ fun HomePage(
                     switching = switching,
                     onAddAccount = onAddAccount,
                     onSwitchAccount = onSwitchAccount,
+                    bottomPadding = barFootprint,
+                )
+            }
+        }
+        // 悬浮胶囊导航：不占布局位，浮在内容之上；液态玻璃透出底下的内容
+        FloatingNavigationBar(
+            modifier = Modifier.align(Alignment.BottomCenter),
+            backgroundModifier = if (glass) {
+                Modifier.textureBlur(backdrop = backdrop, shape = RoundedCornerShape(100))
+            } else {
+                Modifier
+            },
+            color = if (glass) Color.Transparent else FloatingNavigationBarDefaults.color(),
+        ) {
+            HomeTab.entries.forEach { item ->
+                FloatingNavigationBarItem(
+                    selected = tab == item,
+                    onClick = { tab = item },
+                    icon = item.icon,
+                    label = item.label,
+                    colors = FloatingNavigationBarDefaults.itemColors(
+                        selectedColor = scheme.primary,
+                    ),
                 )
             }
         }
