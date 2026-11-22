@@ -50,8 +50,9 @@ import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.legal.PRIVACY_POLICY
 import com.tideengine.mobile.ui.legal.USER_AGREEMENT
-import com.tideengine.mobile.ui.legal.DocumentSheet
+import com.tideengine.mobile.ui.legal.toPlainText
 import io.github.suqi8.coui.kmp.basic.Checkbox
+import io.github.suqi8.coui.kmp.basic.FullPageStatement
 import io.github.suqi8.coui.kmp.basic.InputView
 import io.github.suqi8.coui.kmp.basic.InputViewDefaults
 import io.github.suqi8.coui.kmp.basic.Text
@@ -75,12 +76,10 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
     var sheetVisible by remember { mutableStateOf(false) }
 
     fun submit() {
+        // 空内容不再弹「请输入账号和密码」提示（登录按钮在空字段时禁用）；
+        // 该分支只作为兜底，静默返回
         val account = identifier.trim()
-        if (account.isBlank() || password.isBlank()) {
-            error = "请输入账号和密码"
-            return
-        }
-        if (loading) return
+        if (account.isBlank() || password.isBlank() || loading) return
         loading = true
         error = null
         scope.launch {
@@ -146,7 +145,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { identifier = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "账号",
-                    // 卡内已有标题，不再叠灰色 hint（空内容提示冗余）
+                    label = "请输入邮箱或用户名",
                     enabled = !loading,
                     errorMessage = error.orEmpty(),
                     colors = inputColors,
@@ -161,6 +160,8 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
                     title = "密码",
+                    // 与服务端密码策略（8-72 位）一致的引导提示
+                    label = "至少 8 个字符",
                     enabled = !loading,
                     showPasswordToggle = true,
                     colors = inputColors,
@@ -193,7 +194,8 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
 
             TidePrimaryButton(
                 text = "登录",
-                enabled = !loading,
+                // 空内容时禁用登录（不再弹「请输入账号和密码」提示）
+                enabled = !loading && identifier.isNotBlank() && password.isNotBlank(),
                 loading = loading,
                 onClick = { submit() },
             )
@@ -243,8 +245,9 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
         }
         }
 
-        // 协议浮层渲染在滚动容器之外：铺满根容器，自身的内滚动才有有界高度。
-        // 打开 / 关闭带淡入淡出 + 缩放动画；关闭时 legalDoc 保留供退出动画渲染
+        // 协议页渲染在滚动容器之外（COUI FullPageStatement：居中标题 + 可滚动
+        // 正文 + 底部主按钮），铺满根容器；打开 / 关闭带淡入淡出 + 缩放动画，
+        // 关闭时 legalDoc 保留供退出动画渲染
         AnimatedVisibility(
             visible = sheetVisible,
             enter = fadeIn(tween(180)) + scaleIn(
@@ -257,7 +260,15 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
             ),
         ) {
             legalDoc?.let { doc ->
-                DocumentSheet(doc = doc, onClose = { sheetVisible = false })
+                FullPageStatement(
+                    title = doc.title,
+                    content = doc.toPlainText(),
+                    primaryButtonText = "我知道了",
+                    onPrimaryButtonClick = { sheetVisible = false },
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(scheme.background),
+                )
             }
         }
     }

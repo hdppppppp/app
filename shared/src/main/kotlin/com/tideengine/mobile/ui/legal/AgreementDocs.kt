@@ -23,6 +23,33 @@ data class AgreementDoc(
     val sections: List<AgreementSection>,
 )
 
+/**
+ * 文档转纯文本（COUI FullPageStatement 的 content 是 String）：条目用
+ * 「·」前缀、章节标题独立成行，层次靠换行表达。
+ */
+fun AgreementDoc.toPlainText(): String = buildString {
+    append(intro)
+    append("\n\n")
+    sections.forEachIndexed { index, section ->
+        append(section.title)
+        append("\n")
+        section.blocks.forEach { block ->
+            when (block) {
+                is AgreementBlock.Paragraph -> {
+                    append(block.text)
+                    append("\n")
+                }
+                is AgreementBlock.Bullets -> block.items.forEach { item ->
+                    append("· ")
+                    append(item)
+                    append("\n")
+                }
+            }
+        }
+        if (index != sections.lastIndex) append("\n")
+    }
+}
+
 val USER_AGREEMENT: AgreementDoc = AgreementDoc(
     title = "用户协议",
     version = "v1.0",
