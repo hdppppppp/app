@@ -23,17 +23,17 @@ import com.taotao.music.update.UpdateStage
 import com.taotao.music.update.UpdateStatus
 import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TidePrimaryButton
+import io.github.suqi8.coui.kmp.basic.LinearProgressIndicator
 import io.github.suqi8.coui.kmp.basic.Text
-import io.github.suqi8.coui.kmp.overlay.OverlayProgressDialog
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import io.github.suqi8.coui.kmp.theme.ThemeController
 
 /** 门禁与横幅的诊断日志 tag，与 UpdateManager 的检查日志同 tag 便于串联。 */
 private const val LOG_TAG = "TideUpdate"
 
-/** 可选更新横幅覆盖的阶段：发现新版本、已就绪、失败（下载中走进度对话框）。 */
+/** 可选更新横幅覆盖的阶段：发现新版本、下载中（横幅内嵌进度条）、已就绪、失败。 */
 private val OPTIONAL_BANNER_STAGES = setOf(
     UpdateStage.AVAILABLE,
+    UpdateStage.DOWNLOADING,
     UpdateStage.READY,
     UpdateStage.FAILED,
 )
@@ -71,10 +71,10 @@ fun UpdateGate(
         return
     }
     content()
-    // 可选更新的反馈覆盖整个生命周期：AVAILABLE（发现新版本，横幅）→ DOWNLOADING
-    // （ColorOS 进度对话框）→ READY（立即安装，横幅）→ FAILED（失败重试，横幅）。
-    // 此前只在 AVAILABLE 阶段组合横幅，进入下载即消失，进度与结果全部不可见
-    // （真机对接踩中）
+    // 可选更新的反馈覆盖整个生命周期：AVAILABLE（发现新版本）→ DOWNLOADING
+    // （横幅内嵌确定性进度条）→ READY（立即安装）→ FAILED（失败原因 + 重试），
+    // 全程停留在底部横幅里——下载快慢都可见，不再用一闪而过的模态对话框
+    // （真机反馈：模态对话框在快网下闪过，用户完全看不到下载进度）
     if (!status.forced && status.stage in OPTIONAL_BANNER_STAGES) {
         OptionalUpdateBanner(
             status = status,
@@ -82,19 +82,6 @@ fun UpdateGate(
             onInstall = onInstall,
             onDismiss = onDismiss,
         )
-    }
-    if (status.stage == UpdateStage.DOWNLOADING) {
-        // 下载进度用 COUI 的模态进度对话框呈现（renderInRootScaffold=false 在
-        // 本层渲染；标题色取本层主题默认值），下载期间不可关闭——后台继续
-        COUITheme(controller = remember { ThemeController() }) {
-            OverlayProgressDialog(
-                show = true,
-                progress = status.progressPercent / 100f,
-                title = "正在下载更新",
-                summary = status.release?.versionName?.let { "潮汐引擎 $it 安装包" },
-                onDismissRequest = null,
-            )
-        }
     }
 }
 
@@ -192,10 +179,10 @@ private fun OptionalUpdateBanner(
     onDismiss: () -> Unit,
 ) {
     val scheme = COUITheme.colorScheme
-    // 横幅在发现新版本 / 已就绪 / 失败三个阶段持续可见，直到用户点「稍后」
-    // 或完成安装——解决「不知道下载到哪、装没装」；下载中由进度对话框呈现
+    // 横幅在发现新版本 / 下载中 / 已就绪 / 失败四个阶段持续可见，直到用户点
+    // 「稍后」或完成安装——下载进度内嵌在横幅里，快慢都能看到
     val visible = when (status.stage) {
-        UpdateStage.AVAILABLE, UpdateStage.FAILED, UpdateStage.READY -> true
+        UpdateStage.AVAILABLE, UpdateStage.DOWNLOADING, UpdateStage.FAILED, UpdateStage.READY -> true
         else -> false
     }
     if (!visible) return
@@ -218,6 +205,7 @@ private fun OptionalUpdateBanner(
             Text(
                 text = when (status.stage) {
                     UpdateStage.AVAILABLE -> "发现新版本${release?.versionName?.let { " $it" } ?: ""}"
+                    UpdateStage.DOWNLOADING -> "正在下载更新 ${status.progressPercent}%"
                     UpdateStage.READY -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
                     UpdateStage.FAILED -> "下载失败"
                     else -> "潮汐引擎更新"
@@ -226,6 +214,13 @@ private fun OptionalUpdateBanner(
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
             )
+            if (status.stage == UpdateStage.DOWNLOADING) {
+                // 确定性进度条：百分比随下载实时推进
+                LinearProgressIndicator(
+                    modifier = Modifier.fillMaxWidth(),
+                    progress = status.progressPercent / 100f,
+                )
+            }
             when (status.stage) {
                 UpdateStage.AVAILABLE -> release?.releaseNote?.takeIf { it.isNotBlank() }?.let {
                     Text(
@@ -254,6 +249,7 @@ private fun OptionalUpdateBanner(
                         TidePrimaryButton(text = "下载更新", onClick = onDownload)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
                     }
+                    UpdateStage.DOWNLOADING -> TideGhostButton(text = "隐藏", onClick = onDismiss)
                     UpdateStage.FAILED -> {
                         TidePrimaryButton(text = "重试下载", onClick = onDownload)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
