@@ -188,7 +188,7 @@ private fun OptionalUpdateBanner(
         modifier = Modifier
             .fillMaxSize()
             // 底部避开悬浮胶囊导航栏（56dp 胶囊 + 边距），横幅悬浮在其上方
-            .padding(horizontal = 12.dp, bottom = 88.dp),
+            .padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(
