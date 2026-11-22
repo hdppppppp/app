@@ -25,6 +25,10 @@ import kotlinx.serialization.json.jsonObject
  * 对应 Web 端 client.ts：baseUrl 指向服务端根地址，路径统一以 /api 开头。
  * token 由 TokenStorage 提供，401 时清空并通知外层回到登录页。
  *
+ * baseUrl 可在运行时切换（局域网服务发现完成后调用 [useBaseUrl]）：各仓库
+ * 持有的是同一个 ApiClient 实例，切根后下一次请求即生效，无需重建依赖图。
+ * root 是 @Volatile，请求线程读到的一定是最新值。
+ *
  * 请求体先由 kotlinx.serialization 编码为字符串再发送，避免 Ktor 在
  * `setBody(Any)` 时无法从运行时类型推断 serializer。
  */
@@ -33,7 +37,13 @@ class ApiClient(
     private val tokenProvider: () -> String?,
     private val onUnauthorized: () -> Unit,
 ) {
-    private val root = baseUrl.trimEnd('/')
+    @Volatile
+    private var root: String = baseUrl.trimEnd('/')
+
+    /** 局域网探测 / 手动配置后切换服务端根地址；统一去空白与尾斜杠。 */
+    fun useBaseUrl(url: String) {
+        root = url.trim().trimEnd('/')
+    }
 
     @PublishedApi
     internal val json = Json {

@@ -3,11 +3,17 @@ package com.tideengine.mobile
 import android.app.Application
 import com.taotao.music.update.HotUpdate
 import com.taotao.music.update.HotUpdateSession
+import com.tideengine.mobile.connect.MulticastNetworkLock
+import com.tideengine.mobile.connect.ServerConnectManager
+import com.tideengine.mobile.connect.SharedPreferencesServerAddressStore
 import kotlinx.coroutines.launch
 
 class TideApplication : Application() {
 
     lateinit var hotUpdate: HotUpdateSession
+        private set
+
+    lateinit var serverConnect: ServerConnectManager
         private set
 
     /** 本次启动生效的热修复补丁版本，0 表示没有。 */
@@ -21,10 +27,17 @@ class TideApplication : Application() {
         // ① 尽早加载已安装补丁，晚于第一次业务调用就白打了；
         // ② 创建管理器并把 ① 的返回值传给 initialPatchVersion，避免启动时
         //    已加载的补丁被误判成「有新补丁」再下载一遍；
-        // ③ 启动后检查一次更新，静默失败不打扰用户。
+        // ③ 启动后检查一次更新，静默失败不打扰用户 —— 但必须等服务端地址
+        //    探测就绪后再发起（onReady 回调），否则检查会打到构建期兜底地址。
         activePatchVersion = HotUpdate.installPatches(this)
-        hotUpdate = HotUpdate.create(this, TideUpdateHost(this, BuildConfig.API_BASE_URL), initialPatchVersion = activePatchVersion)
-        hotUpdate.launchCheck()
+        hotUpdate = HotUpdate.create(this, TideUpdateHost(this), initialPatchVersion = activePatchVersion)
+        serverConnect = ServerConnectManager(
+            defaultBaseUrl = BuildConfig.API_BASE_URL,
+            store = SharedPreferencesServerAddressStore(this),
+            networkLock = MulticastNetworkLock(this),
+            onReady = { hotUpdate.launchCheck() },
+        )
+        serverConnect.start()
     }
 }
 
