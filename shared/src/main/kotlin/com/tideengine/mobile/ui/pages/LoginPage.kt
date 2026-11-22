@@ -86,17 +86,19 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
         }
     }
 
-    // 垂直居中的整体构图：内容不满一屏时视觉重心在页面中部，超出时可滚动。
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(scheme.background)
-            .systemBarsPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 24.dp, vertical = 32.dp),
-        contentAlignment = Alignment.Center,
-    ) {
+    // 根容器不滚动：协议浮层必须渲染在滚动容器之外——它在自身带内滚动，
+    // 放进 verticalScroll 会收到无限高度约束，COUI 的 overscroll 测量节点
+    // 直接抛异常（真机点协议链接即闪退）；遮罩也必须铺满根容器而非仅内容区。
+    Box(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .systemBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            contentAlignment = Alignment.Center,
+        ) {
         Column(
             modifier = Modifier.widthIn(max = 420.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -218,7 +220,9 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        }
 
+        // 协议浮层渲染在滚动容器之外：铺满根容器，自身的内滚动才有有界高度
         legalDoc?.let { doc ->
             DocumentSheet(doc = doc, onClose = { legalDoc = null })
         }
