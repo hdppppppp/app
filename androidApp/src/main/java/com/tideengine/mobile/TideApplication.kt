@@ -22,10 +22,10 @@ class TideApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
-        // UA 供服务端登录会话解析「登录设备」：潮汐引擎 App <版本> · Android
-        // （机型放进括号段，与浏览器 UA 的注释形态一致，便于人工阅读）
-        val userAgent = "TideEngine-Android/${BuildConfig.VERSION_NAME}" +
-            " (Android ${android.os.Build.VERSION.RELEASE}; ${android.os.Build.MODEL})"
+        // UA 供服务端登录会话解析「登录设备」：潮汐引擎 App <版本> · Android。
+        // 形态为「APP 前缀 + 机型 + 系统」：TideEngine-APP/<版本> (<机型>; Android <版本>)
+        val userAgent = "TideEngine-APP/${BuildConfig.VERSION_NAME}" +
+            " (${android.os.Build.MODEL}; Android ${android.os.Build.VERSION.RELEASE})"
         MobileBootstrap.install(this, BuildConfig.API_BASE_URL, userAgent)
         // 热更新接入（上游 README 的三步纪律）：
         // ① 尽早加载已安装补丁，晚于第一次业务调用就白打了；

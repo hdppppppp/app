@@ -207,7 +207,8 @@ private fun ManualAddressForm(
             title = "服务地址",
             label = "例如 192.168.31.17:3100",
             enabled = enabled,
-            showClearButton = true,
+            // 清除按钮按条件出现会撑高输入行（登录页账号框同因），一并关闭
+            showClearButton = false,
             singleLine = true,
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Uri,
