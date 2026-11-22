@@ -34,7 +34,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
 import com.tideengine.mobile.api.dto.PublicUser
-import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideErrorBanner
 import com.tideengine.mobile.ui.components.TideLogo
 import com.tideengine.mobile.ui.components.TidePrimaryButton
@@ -117,14 +116,15 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
 
             Spacer(Modifier.height(28.dp))
 
-            // 输入区单独成卡；开关与按钮移出卡片，层次更清晰
-            TideCard {
+            // 输入区：ColorOS 风格下划线输入（Line 模式），独立字段不再套卡片，
+            // 避免「盒子套盒子」的层次噪音
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 TextField(
                     value = identifier,
                     onValueChange = { identifier = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = "邮箱或用户名",
-                    backgroundMode = TextFieldMode.Rectangle,
+                    backgroundMode = TextFieldMode.Line,
                     enabled = !loading,
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
@@ -138,7 +138,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     onValueChange = { password = it },
                     modifier = Modifier.fillMaxWidth(),
                     label = "密码",
-                    backgroundMode = TextFieldMode.Rectangle,
+                    backgroundMode = TextFieldMode.Line,
                     enabled = !loading,
                     showPasswordToggle = true,
                     singleLine = true,
