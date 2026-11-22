@@ -28,13 +28,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.state.ToggleableState
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withLink
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.tideengine.mobile.ServiceLocator
@@ -183,20 +183,23 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
 
             Spacer(Modifier.height(20.dp))
 
-            // 协议声明：与 Web 端登录页一致；链接在 App 内浮层打开，不走浏览器
-            val linkStyle = TextLinkStyles(
-                spanStyle = SpanStyle(color = scheme.primary),
-            )
+            // 协议声明：与 Web 端登录页一致；链接在 App 内浮层打开，不走浏览器。
+            // 链接颜色用外层 withStyle 提供（TextLinkStyles 构造参数各版本不一致，
+            // 不直接依赖它）
             Text(
                 text = buildAnnotatedString {
                     append("登录即表示您同意")
-                    withLink(
-                        LinkAnnotation.Clickable("user", linkStyle) { legalDoc = USER_AGREEMENT },
-                    ) { append("《用户协议》") }
+                    withStyle(SpanStyle(color = scheme.primary)) {
+                        withLink(
+                            LinkAnnotation.Clickable("user") { legalDoc = USER_AGREEMENT },
+                        ) { append("《用户协议》") }
+                    }
                     append("与")
-                    withLink(
-                        LinkAnnotation.Clickable("privacy", linkStyle) { legalDoc = PRIVACY_POLICY },
-                    ) { append("《隐私政策》") }
+                    withStyle(SpanStyle(color = scheme.primary)) {
+                        withLink(
+                            LinkAnnotation.Clickable("privacy") { legalDoc = PRIVACY_POLICY },
+                        ) { append("《隐私政策》") }
+                    }
                 },
                 fontSize = 12.sp,
                 color = scheme.onBackgroundVariant,
