@@ -191,11 +191,10 @@ private fun OptionalUpdateBanner(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // 顶部横幅（跟随系统状态栏留白），不占底部——悬浮胶囊导航条所在
-            // 的底部区域保持原样，内容与导航条互不遮挡
-            .statusBarsPadding()
-            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
-        contentAlignment = Alignment.TopCenter,
+            // 居中卡片：不占底部导航条区域，也不遮挡顶部栏；跟随系统深浅色
+            .systemBarsPadding()
+            .padding(horizontal = 12.dp),
+        contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
