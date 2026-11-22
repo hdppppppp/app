@@ -7,7 +7,7 @@ import io.ktor.client.statement.bodyAsText
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.semaphore.Semaphore
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -51,6 +51,16 @@ object LanDiscovery {
 
     /** 应答协议版本：只认 protocol=1，服务端将来升版时旧客户端静默丢弃。 */
     private const val PROTOCOL_VERSION = 1
+
+    // object 内不能再嵌 companion object，常量直接挂在 LanDiscovery 本体上；
+    // IntRange 等引用类型不能 const，只去 const 关键字，值仍然不可变。
+    private const val DEFAULT_TIMEOUT_MS = 2_000
+    private const val UDP_WINDOW_MS = 1_500L
+    private const val RECV_POLL_MS = 80
+    private const val MAX_REPLY_BYTES = 1_024
+    private const val SCAN_CONNECT_TIMEOUT_MS = 300
+    private const val SCAN_PARALLELISM = 64
+    private val HOST_RANGE = 1..254
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -286,15 +296,5 @@ object LanDiscovery {
             }
         }
         return result
-    }
-
-    private companion object {
-        const val DEFAULT_TIMEOUT_MS = 2_000
-        const val UDP_WINDOW_MS = 1_500L
-        const val RECV_POLL_MS = 80
-        const val MAX_REPLY_BYTES = 1_024
-        const val SCAN_CONNECT_TIMEOUT_MS = 300
-        const val SCAN_PARALLELISM = 64
-        const val HOST_RANGE = 1..254
     }
 }
