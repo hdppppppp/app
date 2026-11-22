@@ -142,6 +142,7 @@ class UpdateManager(
      * 会话中途会被响应头触发重查，抹掉状态等于让用户刚看到的更新提示消失。
      */
     suspend fun check(manual: Boolean = false) {
+        Log.i(LOG_TAG, "check enter: manual=$manual stage=${status.stage}")
         if (status.stage == UpdateStage.DOWNLOADING) return
         // tryLock 而不是 lock：重复触发直接丢弃，不排队。
         if (!checkLock.tryLock()) return

@@ -188,6 +188,7 @@ class ServerConnectManager(
         }
         store.save(url)
         mutableState.value = ServerConnectState.Ready(url, server.name)
+        android.util.Log.i("TideUpdate", "adopt: baseUrl=$url server=${server.name} → onReady(launchCheck)")
         onReady()
     }
 
