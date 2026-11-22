@@ -92,7 +92,7 @@ private fun ConnectPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.backgroundElevated)
+            .background(scheme.backgroundWithCard)
             .systemBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())

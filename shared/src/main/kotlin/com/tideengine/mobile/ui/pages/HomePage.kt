@@ -51,12 +51,12 @@ fun HomePage(
     var refreshKey by remember { mutableIntStateOf(0) }
 
     Scaffold(
-        containerColor = scheme.backgroundElevated,
+        containerColor = scheme.backgroundWithCard,
         topBar = {
             SmallTopAppBar(
                 title = tab.label,
                 subtitle = "潮汐引擎 · ${user.displayName}",
-                color = scheme.backgroundElevated,
+                color = scheme.backgroundWithCard,
                 titleColor = scheme.labelPrimary,
                 subtitleColor = scheme.labelSecondary,
                 dividerColor = scheme.divider,
