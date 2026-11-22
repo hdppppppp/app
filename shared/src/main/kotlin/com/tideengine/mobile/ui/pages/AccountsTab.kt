@@ -188,7 +188,7 @@ private fun AccountCard(
         ) {
             Text(
                 text = account.nickname,
-                color = scheme.onSurface,
+                color = scheme.labelPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
@@ -196,8 +196,8 @@ private fun AccountCard(
             if (account.isPrimary) {
                 TideTag(
                     text = "默认",
-                    color = scheme.onPrimaryContainer,
-                    background = scheme.primaryContainer,
+                    color = scheme.labelOnColor,
+                    background = scheme.containerTheme,
                 )
             }
         }
@@ -245,7 +245,7 @@ private fun AccountCard(
             TideDivider()
             Text(
                 text = "账号任务开关",
-                color = scheme.onSurfaceSecondary,
+                color = scheme.labelSecondary,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Medium,
             )
@@ -272,14 +272,14 @@ private fun SwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = item.label, color = scheme.onSurface, fontSize = 13.sp)
+            Text(text = item.label, color = scheme.labelPrimary, fontSize = 13.sp)
             Text(
                 text = if (item.enabled) {
                     "下次执行 ${formatIsoDate(item.nextRunAt)}"
                 } else {
                     item.description.ifBlank { "未启用" }
                 },
-                color = scheme.onSurfaceVariantSummary,
+                color = scheme.labelSecondaryVariant,
                 fontSize = 11.sp,
             )
         }

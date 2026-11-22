@@ -103,12 +103,12 @@ fun TideGhostButton(
         modifier = modifier,
         enabled = enabled,
         colors = ButtonDefaults.textButtonColors(
-            color = if (danger) scheme.errorContainer else scheme.secondaryContainer,
-            textColor = if (danger) scheme.onErrorContainer else scheme.onSecondaryContainer,
-            disabledColor = scheme.surfaceContainerHigh,
-            disabledTextColor = scheme.disabledOnSurface,
+            color = if (danger) scheme.errorTextBg else scheme.secondaryContainer,
+            textColor = if (danger) scheme.error else scheme.labelOnColor,
+            disabledColor = scheme.cardBackground,
+            disabledTextColor = scheme.disabledNeutral,
         ),
-        textStyle = COUITheme.textStyles.button.copy(
+        textStyle = COUITheme.textStyles.buttonL.copy(
             fontSize = 13.sp,
             fontWeight = FontWeight.Medium,
         ),
@@ -118,8 +118,8 @@ fun TideGhostButton(
 @Composable
 fun TideTag(
     text: String,
-    color: Color = COUITheme.colorScheme.onPrimaryContainer,
-    background: Color = COUITheme.colorScheme.primaryContainer,
+    color: Color = COUITheme.colorScheme.labelOnColor,
+    background: Color = COUITheme.colorScheme.containerTheme,
 ) {
     Surface(
         color = background,
@@ -138,7 +138,7 @@ fun TideTag(
 
 @Composable
 fun TideDivider() {
-    HorizontalDivider(color = COUITheme.colorScheme.dividerLine)
+    HorizontalDivider(color = COUITheme.colorScheme.divider)
 }
 
 @Composable
@@ -149,7 +149,7 @@ fun TideSectionTitle(text: String, trailing: @Composable (RowScope.() -> Unit)? 
     ) {
         Text(
             text = text,
-            color = COUITheme.colorScheme.onSurface,
+            color = COUITheme.colorScheme.labelPrimary,
             fontSize = 15.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.weight(1f),
@@ -168,7 +168,7 @@ fun TideEmptyState(text: String) {
     ) {
         Text(
             text = text,
-            color = COUITheme.colorScheme.onSurfaceVariantSummary,
+            color = COUITheme.colorScheme.labelSecondaryVariant,
             fontSize = 13.sp,
         )
     }
@@ -179,13 +179,13 @@ fun TideErrorBanner(message: String, onRetry: (() -> Unit)? = null) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(COUITheme.colorScheme.errorContainer, RoundedCornerShape(10.dp))
+            .background(COUITheme.colorScheme.errorTextBg, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = message,
-            color = COUITheme.colorScheme.onErrorContainer,
+            color = COUITheme.colorScheme.error,
             fontSize = 12.sp,
             modifier = Modifier.weight(1f),
         )
@@ -201,12 +201,12 @@ fun TideNoticeBanner(message: String) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(COUITheme.colorScheme.primaryContainer, RoundedCornerShape(10.dp))
+            .background(COUITheme.colorScheme.containerTheme, RoundedCornerShape(10.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         Text(
             text = message,
-            color = COUITheme.colorScheme.onPrimaryContainer,
+            color = COUITheme.colorScheme.labelOnColor,
             fontSize = 12.sp,
         )
     }
@@ -225,7 +225,7 @@ fun TideLoadingRow(text: String = "加载中…") {
         Spacer(Modifier.width(8.dp))
         Text(
             text = text,
-            color = COUITheme.colorScheme.onSurfaceVariantSummary,
+            color = COUITheme.colorScheme.labelSecondaryVariant,
             fontSize = 13.sp,
         )
     }
@@ -236,13 +236,13 @@ fun TideStatRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
             text = label,
-            color = COUITheme.colorScheme.onSurfaceVariantSummary,
+            color = COUITheme.colorScheme.labelSecondaryVariant,
             fontSize = 12.sp,
             modifier = Modifier.width(84.dp),
         )
         Text(
             text = value,
-            color = COUITheme.colorScheme.onSurface,
+            color = COUITheme.colorScheme.labelPrimary,
             fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -255,7 +255,7 @@ fun TideStatRow(label: String, value: String) {
 fun TideFieldLabel(text: String) {
     Text(
         text = text,
-        color = COUITheme.colorScheme.onSurfaceVariantSummary,
+        color = COUITheme.colorScheme.labelSecondaryVariant,
         fontSize = 12.sp,
         modifier = Modifier.fillMaxWidth(),
     )

@@ -50,11 +50,10 @@ import com.tideengine.mobile.ui.components.TidePrimaryButton
 import com.tideengine.mobile.ui.components.errorText
 import com.tideengine.mobile.ui.legal.PRIVACY_POLICY
 import com.tideengine.mobile.ui.legal.USER_AGREEMENT
-import com.tideengine.mobile.ui.legal.toPlainText
+import com.tideengine.mobile.ui.legal.toAnnotatedString
 import io.github.suqi8.coui.kmp.basic.Checkbox
 import io.github.suqi8.coui.kmp.basic.FullPageStatement
 import io.github.suqi8.coui.kmp.basic.InputView
-import io.github.suqi8.coui.kmp.basic.InputViewDefaults
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.launch
@@ -97,7 +96,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
     // 根容器不滚动：协议浮层必须渲染在滚动容器之外——它在自身带内滚动，
     // 放进 verticalScroll 会收到无限高度约束，COUI 的 overscroll 测量节点
     // 直接抛异常（真机点协议链接即闪退）；遮罩也必须铺满根容器而非仅内容区。
-    Box(modifier = Modifier.fillMaxSize().background(scheme.background)) {
+    Box(modifier = Modifier.fillMaxSize().background(scheme.backgroundElevated)) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -118,27 +117,23 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                 text = "潮汐引擎",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = scheme.onBackground,
+                color = scheme.labelPrimary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "登录后管理游戏账号与自动任务",
                 fontSize = 14.sp,
-                color = scheme.onBackgroundVariant,
+                color = scheme.labelSecondary,
                 textAlign = TextAlign.Center,
             )
 
             Spacer(Modifier.height(28.dp))
 
-            // 输入区：COUI InputView（ColorOS 设置同款「卡片单输入」）。账号框
-            // 不开 showClearButton —— 清除按钮按焦点与内容条件出现，出现时撑高
-            // 输入行导致视觉抖动；密码可见切换是常驻元素，高度恒定可保留。
-            // 卡片底色显式用 surfaceContainerHigh：默认 cardBackground 在浅色
-            // 主题下是纯白，落在白底页面上卡片会隐形
-            val inputColors = InputViewDefaults.inputViewColors(
-                cardColor = scheme.surfaceContainerHigh,
-            )
+            // 输入区：COUI InputView（ColorOS 设置同款「卡片单输入」，2.x 默认
+            // cardBackground 即可见卡片色）。账号框不开 showClearButton —— 清除
+            // 按钮按焦点与内容条件出现，出现时撑高输入行导致视觉抖动；密码可见
+            // 切换是常驻元素，高度恒定可保留
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 InputView(
                     value = identifier,
@@ -148,7 +143,6 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     label = "请输入邮箱或用户名",
                     enabled = !loading,
                     errorMessage = error.orEmpty(),
-                    colors = inputColors,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Email,
                         imeAction = ImeAction.Next,
@@ -164,7 +158,6 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     label = "至少 8 个字符",
                     enabled = !loading,
                     showPasswordToggle = true,
-                    colors = inputColors,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Password,
                         imeAction = ImeAction.Done,
@@ -186,7 +179,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                 Text(
                     text = "记住登录",
                     fontSize = 14.sp,
-                    color = scheme.onSurface,
+                    color = scheme.labelPrimary,
                 )
             }
 
@@ -227,7 +220,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
                     }
                 },
                 fontSize = 12.sp,
-                color = scheme.onBackgroundVariant,
+                color = scheme.labelSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -238,7 +231,7 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
             Text(
                 text = "服务地址 ${ServiceLocator.apiBaseUrl.substringAfter("://")}",
                 fontSize = 11.sp,
-                color = scheme.onBackgroundVariant,
+                color = scheme.labelSecondary,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -262,12 +255,12 @@ fun LoginPage(onAuthenticated: (PublicUser) -> Unit) {
             legalDoc?.let { doc ->
                 FullPageStatement(
                     title = doc.title,
-                    content = doc.toPlainText(),
+                    content = doc.toAnnotatedString(),
                     primaryButtonText = "我知道了",
                     onPrimaryButtonClick = { sheetVisible = false },
                     modifier = Modifier
                         .fillMaxSize()
-                        .background(scheme.background),
+                        .background(scheme.backgroundElevated),
                 )
             }
         }

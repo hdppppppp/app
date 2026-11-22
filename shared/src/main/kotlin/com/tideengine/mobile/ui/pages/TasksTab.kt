@@ -149,32 +149,32 @@ private fun TaskRow(
         ) {
             Text(
                 text = task.name,
-                color = scheme.onSurface,
+                color = scheme.labelPrimary,
                 fontSize = 15.sp,
                 fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
             )
             TideTag(
                 text = if (task.enabled) "已启用" else "已停用",
-                color = if (task.enabled) scheme.onPrimaryContainer else scheme.onSurfaceVariantSummary,
-                background = if (task.enabled) scheme.primaryContainer else scheme.surfaceContainerHigh,
+                color = if (task.enabled) scheme.labelOnColor else scheme.labelSecondaryVariant,
+                background = if (task.enabled) scheme.containerTheme else scheme.cardBackground,
             )
         }
 
         Text(
             text = "${task.handlerType} · ${task.scheduleType.label()}",
-            color = scheme.onSurfaceSecondary,
+            color = scheme.labelSecondary,
             fontSize = 12.sp,
         )
         Text(
             text = "下次执行 ${formatIsoDate(task.nextRunAt)} · 上次执行 ${formatIsoDate(task.lastRunAt)}",
-            color = scheme.onSurfaceVariantSummary,
+            color = scheme.labelSecondaryVariant,
             fontSize = 11.sp,
         )
         if (task.description.isNotBlank()) {
             Text(
                 text = task.description,
-                color = scheme.onSurfaceVariantSummary,
+                color = scheme.labelSecondaryVariant,
                 fontSize = 12.sp,
                 maxLines = 2,
             )

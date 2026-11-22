@@ -92,7 +92,7 @@ private fun ConnectPage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
+            .background(scheme.backgroundElevated)
             .systemBarsPadding()
             .imePadding()
             .verticalScroll(rememberScrollState())
@@ -109,14 +109,14 @@ private fun ConnectPage(
                 text = "潮汐引擎",
                 fontSize = 28.sp,
                 fontWeight = FontWeight.Bold,
-                color = scheme.onBackground,
+                color = scheme.labelPrimary,
                 textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(6.dp))
             Text(
                 text = "正在寻找局域网内的服务端",
                 fontSize = 14.sp,
-                color = scheme.onBackgroundVariant,
+                color = scheme.labelSecondary,
                 textAlign = TextAlign.Center,
             )
 
@@ -177,12 +177,12 @@ private fun RestrictedModeToggle(
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = "公共网络模式",
-                color = scheme.onSurface,
+                color = scheme.labelPrimary,
                 fontSize = 14.sp,
             )
             Text(
                 text = "不发广播、不扫描网段，仅记忆地址或手动输入。公共 Wi-Fi 下建议开启。",
-                color = scheme.onSurfaceVariantSummary,
+                color = scheme.labelSecondaryVariant,
                 fontSize = 11.sp,
             )
         }
@@ -212,7 +212,7 @@ private fun ManualAddressForm(
             // 卡片底色同登录页：默认 cardBackground 白底上隐形
             showClearButton = false,
             colors = InputViewDefaults.inputViewColors(
-                cardColor = COUITheme.colorScheme.surfaceContainerHigh,
+                cardColor = COUITheme.colorScheme.cardBackground,
             ),
             singleLine = true,
             keyboardOptions = KeyboardOptions(

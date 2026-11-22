@@ -83,7 +83,7 @@ private fun ForceUpdatePage(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
+            .background(scheme.backgroundElevated)
             .systemBarsPadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center,
@@ -94,14 +94,14 @@ private fun ForceUpdatePage(
         ) {
             Text(
                 text = "发现新版本",
-                color = scheme.onBackground,
+                color = scheme.labelPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
             status.release?.let { release ->
                 Text(
                     text = "${release.versionName}（${release.versionCode}）",
-                    color = scheme.onSurfaceVariantSummary,
+                    color = scheme.labelSecondaryVariant,
                     fontSize = 15.sp,
                 )
                 if (release.releaseNote.isNotBlank()) {
@@ -109,12 +109,12 @@ private fun ForceUpdatePage(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(12.dp))
-                            .background(scheme.surfaceContainerHigh)
+                            .background(scheme.cardBackground)
                             .padding(14.dp),
                     ) {
                         Text(
                             text = release.releaseNote,
-                            color = scheme.onSurface,
+                            color = scheme.labelPrimary,
                             fontSize = 13.sp,
                         )
                     }
@@ -129,7 +129,7 @@ private fun ForceUpdatePage(
                 UpdateStage.DOWNLOADING -> {
                     Text(
                         text = "正在下载更新包 ${status.progressPercent}%",
-                        color = scheme.onSurfaceVariantSummary,
+                        color = scheme.labelSecondaryVariant,
                         fontSize = 13.sp,
                     )
                 }
@@ -190,7 +190,7 @@ private fun OptionalUpdateBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(14.dp))
-                .background(scheme.surfaceContainerHigh)
+                .background(scheme.cardBackground)
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -200,14 +200,14 @@ private fun OptionalUpdateBanner(
                     UpdateStage.DOWNLOADING -> "正在下载更新 ${status.progressPercent}%"
                     else -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
                 },
-                color = scheme.onSurface,
+                color = scheme.labelPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             if (status.stage == UpdateStage.READY) {
                 Text(
                     text = "安装包已下载并通过校验，点击立即安装",
-                    color = scheme.onSurfaceVariantSummary,
+                    color = scheme.labelSecondaryVariant,
                     fontSize = 12.sp,
                 )
             }

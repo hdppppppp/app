@@ -14,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.tideengine.mobile.api.dto.PublicUser
 import io.github.suqi8.coui.kmp.basic.ButtonDefaults
-import io.github.suqi8.coui.kmp.basic.NavigationBar
-import io.github.suqi8.coui.kmp.basic.NavigationBarItem
+import io.github.suqi8.coui.kmp.basic.FloatingNavigationBar
+import io.github.suqi8.coui.kmp.basic.FloatingNavigationBarItem
 import io.github.suqi8.coui.kmp.basic.Scaffold
 import io.github.suqi8.coui.kmp.basic.SmallTopAppBar
 import io.github.suqi8.coui.kmp.basic.TextButton
@@ -45,15 +45,15 @@ fun HomePage(
     var refreshKey by remember { mutableIntStateOf(0) }
 
     Scaffold(
-        containerColor = scheme.background,
+        containerColor = scheme.backgroundElevated,
         topBar = {
             SmallTopAppBar(
                 title = tab.label,
                 subtitle = "潮汐引擎 · ${user.displayName}",
-                color = scheme.background,
-                titleColor = scheme.onBackground,
-                subtitleColor = scheme.onBackgroundVariant,
-                dividerColor = scheme.dividerLine,
+                color = scheme.backgroundElevated,
+                titleColor = scheme.labelPrimary,
+                subtitleColor = scheme.labelSecondary,
+                dividerColor = scheme.divider,
                 showDivider = true,
                 actions = {
                     if (tab != HomeTab.Profile) {
@@ -69,9 +69,10 @@ fun HomePage(
             )
         },
         bottomBar = {
-            NavigationBar(color = scheme.background, showDivider = true) {
+            // COUI 17 悬浮胶囊导航栏（组件自带底栏材质，随选中项形变）
+            FloatingNavigationBar {
                 HomeTab.entries.forEach { item ->
-                    NavigationBarItem(
+                    FloatingNavigationBarItem(
                         selected = tab == item,
                         onClick = { tab = item },
                         icon = item.icon,

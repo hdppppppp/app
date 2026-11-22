@@ -115,7 +115,7 @@ private fun SplashScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
+            .background(scheme.backgroundElevated)
             .systemBarsPadding(),
         contentAlignment = Alignment.Center,
     ) {
@@ -136,7 +136,7 @@ private fun SplashScreen() {
             }
             Text(
                 text = "潮汐引擎",
-                color = scheme.onBackground,
+                color = scheme.labelPrimary,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
             )
@@ -155,7 +155,7 @@ private fun BootErrorScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(scheme.background)
+            .background(scheme.backgroundElevated)
             .systemBarsPadding()
             .padding(24.dp),
         contentAlignment = Alignment.Center,
