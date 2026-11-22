@@ -60,6 +60,10 @@ object LanDiscovery {
     private const val MAX_REPLY_BYTES = 1_024
     private const val SCAN_CONNECT_TIMEOUT_MS = 300
     private const val SCAN_PARALLELISM = 64
+    /** UDP 应答候选的硬上限：假应答洪泛时最多占满配额，不会无限膨胀。 */
+    private const val MAX_CANDIDATES = 8
+    /** 应答里展示字段的截断长度，防恶意服务端用超长字符串破坏布局。 */
+    private const val MAX_NAME_LENGTH = 40
     private val HOST_RANGE = 1..254
 
     private val json = Json {
@@ -108,6 +112,9 @@ object LanDiscovery {
      * 命中返回摘要；网络失败、非 2xx、非本服务（app 不符）一律返回 null，
      * 不抛异常 —— 调用方按「下一个候选」继续，不必逐个捕获。每个超时档位
      * 建独立客户端：verify 调用频次极低（每次启动最多几次），不复用连接池。
+     *
+     * 应答来自不可信的局域网：name / version 会展示在界面上，截断防止
+     * 恶意服务端用超长字符串撑爆布局。
      */
     suspend fun verify(baseUrl: String, timeoutMs: Int = DEFAULT_TIMEOUT_MS): DiscoveredServer? =
         withContext(Dispatchers.IO) {
@@ -129,8 +136,8 @@ object LanDiscovery {
                 if (envelope.code != 0 || info.app != "tide-engine") return@withContext null
                 DiscoveredServer(
                     baseUrl = root,
-                    name = info.name?.takeIf { it.isNotBlank() },
-                    version = info.version?.takeIf { it.isNotBlank() },
+                    name = info.name?.takeIf { it.isNotBlank() }?.take(MAX_NAME_LENGTH),
+                    version = info.version?.takeIf { it.isNotBlank() }?.take(MAX_NAME_LENGTH),
                 )
             } catch (_: Throwable) {
                 null
@@ -168,6 +175,9 @@ object LanDiscovery {
             val deadline = System.currentTimeMillis() + timeoutMs
             val buffer = ByteArray(MAX_REPLY_BYTES)
             while (System.currentTimeMillis() < deadline) {
+                // 候选数有硬上限：恶意设备灌海量假应答最多只占满配额，
+                // 不会让调用方的逐个验证阶段无限膨胀（防启动期 DoS）
+                if (found.size >= MAX_CANDIDATES) break
                 val packet = DatagramPacket(buffer, buffer.size)
                 val received = try {
                     socket.receive(packet)
@@ -183,7 +193,7 @@ object LanDiscovery {
                 val replyPort = reply.port ?: DEFAULT_HTTP_PORT
                 if (replyPort !in 1..65535) continue
                 // 同一服务端可能经全网广播与定向广播各应答一次，按 baseUrl 去重
-                found.putIfAbsent("http://$host:$replyPort", reply.name)
+                found.putIfAbsent("http://$host:$replyPort", reply.name?.take(MAX_NAME_LENGTH))
             }
         } finally {
             socket.close()
