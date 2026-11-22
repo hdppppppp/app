@@ -1,5 +1,6 @@
 package com.tideengine.mobile.ui.update
 
+import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,9 @@ import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
 import kotlinx.coroutines.delay
 
+/** 门禁与横幅的诊断日志 tag，与 UpdateManager 的检查日志同 tag 便于串联。 */
+private const val LOG_TAG = "TideUpdate"
+
 /**
  * 热更新门禁：强制更新拦截页 + 可选更新对话框逻辑。
  *
@@ -52,6 +56,8 @@ fun UpdateGate(
     onRetry: () -> Unit,
     content: @Composable () -> Unit,
 ) {
+    // 门禁组合的诊断日志：AVAILABLE 横幅不出现时，先确认组合层是否收到状态
+    Log.d(LOG_TAG, "gate compose: stage=${status.stage} forced=${status.forced} release=${status.release?.versionCode}")
     if (status.blocking) {
         ForceUpdatePage(
             status = status,
