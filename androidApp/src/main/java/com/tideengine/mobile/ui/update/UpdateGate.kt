@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
@@ -190,9 +191,11 @@ private fun OptionalUpdateBanner(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            // 底部避开悬浮胶囊导航栏（56dp 胶囊 + 边距），横幅悬浮在其上方
-            .padding(start = 12.dp, end = 12.dp, bottom = 88.dp),
-        contentAlignment = Alignment.BottomCenter,
+            // 顶部横幅（跟随系统状态栏留白），不占底部——悬浮胶囊导航条所在
+            // 的底部区域保持原样，内容与导航条互不遮挡
+            .statusBarsPadding()
+            .padding(start = 12.dp, end = 12.dp, top = 8.dp),
+        contentAlignment = Alignment.TopCenter,
     ) {
         Column(
             modifier = Modifier
