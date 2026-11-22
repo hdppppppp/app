@@ -32,6 +32,7 @@ import com.tideengine.mobile.api.ApiException
 import com.tideengine.mobile.api.dto.PublicUser
 import com.tideengine.mobile.api.dto.UserRole
 import com.tideengine.mobile.api.dto.UserStatus
+import com.tideengine.mobile.auth.SavedAccount
 import com.tideengine.mobile.ui.components.AvatarImage
 import com.tideengine.mobile.ui.components.TideCard
 import com.tideengine.mobile.ui.components.TideDivider
@@ -58,6 +59,10 @@ fun ProfileTab(
     onUserUpdated: (PublicUser) -> Unit,
     onSessionExpired: () -> Unit,
     onLoggedOut: () -> Unit,
+    otherAccounts: List<SavedAccount> = emptyList(),
+    switching: Boolean = false,
+    onAddAccount: () -> Unit = {},
+    onSwitchAccount: (SavedAccount) -> Unit = {},
 ) {
     val scheme = COUITheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -263,6 +268,73 @@ fun ProfileTab(
                 )
                 avatarError?.let { TideErrorBanner(message = it) }
                 avatarNotice?.let { TideNoticeBanner(message = it) }
+            }
+        }
+
+        item {
+            TideCard {
+                Text(
+                    text = "账号切换",
+                    color = scheme.labelPrimary,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                if (otherAccounts.isEmpty()) {
+                    Text(
+                        text = "暂无其他已记住账号。点「添加账号」登录另一个账号，之后可在这里一键切换。",
+                        color = scheme.labelSecondaryVariant,
+                        fontSize = 12.sp,
+                    )
+                } else {
+                    otherAccounts.forEach { entry ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Surface(
+                                modifier = Modifier.size(36.dp),
+                                shape = CircleShape,
+                                color = scheme.primary,
+                                contentColor = scheme.onPrimary,
+                            ) {
+                                AvatarImage(
+                                    url = entry.avatarUrl,
+                                    fallback = {
+                                        Text(
+                                            text = entry.displayName.take(1).uppercase(),
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.Bold,
+                                        )
+                                    },
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = entry.displayName,
+                                    color = scheme.labelPrimary,
+                                    fontSize = 14.sp,
+                                )
+                                Text(
+                                    text = "@${entry.username}",
+                                    color = scheme.labelSecondaryVariant,
+                                    fontSize = 11.sp,
+                                )
+                            }
+                            TideGhostButton(
+                                text = if (switching) "切换中" else "切换",
+                                enabled = !switching,
+                                onClick = { onSwitchAccount(entry) },
+                            )
+                        }
+                    }
+                }
+                TideDivider()
+                TideGhostButton(
+                    text = "添加账号",
+                    enabled = !switching,
+                    onClick = onAddAccount,
+                )
             }
         }
 
