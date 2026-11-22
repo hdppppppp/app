@@ -61,6 +61,8 @@ fun HomePage(
     val scheme = COUITheme.colorScheme
     var tab by remember { mutableStateOf(HomeTab.Tasks) }
     var refreshKey by remember { mutableIntStateOf(0) }
+    // 编辑资料子页打开时隐藏悬浮导航条（组件自带收起动画）
+    var editingProfile by remember { mutableStateOf(false) }
 
     // 液态玻璃：Scaffold 内容整体录入 LayerBackdrop，悬浮导航条以 textureBlur
     // 取景「自己背后的内容」——滚动列表会从胶囊底下穿过。RuntimeShader 仅
@@ -97,8 +99,9 @@ fun HomePage(
         bottomBar = {
             // COUI 17 悬浮胶囊导航栏（组件自带底栏材质，随选中项形变）。
             // 组件默认的选中 / 未选中只差一层透明度（E6 vs B8 黑），肉眼几乎
-            // 分不清当前页 —— 选中项显式用主题色加强指示
-            FloatingNavigationBar {
+            // 分不清当前页 —— 选中项显式用主题色加强指示。
+            // 编辑资料子页打开时整条收起（组件 visible 自带下滑动画），让位给子页
+            FloatingNavigationBar(visible = !(tab == HomeTab.Profile && editingProfile)) {
                 HomeTab.entries.forEach { item ->
                     FloatingNavigationBarItem(
                         selected = tab == item,
@@ -147,17 +150,19 @@ fun HomePage(
                         bottomPadding = barFootprint,
                     )
 
-                    HomeTab.Profile -> ProfileTab(
-                        user = user,
-                        onUserUpdated = onUserUpdated,
-                        onSessionExpired = onSessionExpired,
-                        onLoggedOut = onSessionExpired,
-                        otherAccounts = otherAccounts,
-                        switching = switching,
-                        onAddAccount = onAddAccount,
-                        onSwitchAccount = onSwitchAccount,
-                        bottomPadding = barFootprint,
-                    )
+                HomeTab.Profile -> ProfileTab(
+                    user = user,
+                    onUserUpdated = onUserUpdated,
+                    onSessionExpired = onSessionExpired,
+                    onLoggedOut = onSessionExpired,
+                    otherAccounts = otherAccounts,
+                    switching = switching,
+                    onAddAccount = onAddAccount,
+                    onSwitchAccount = onSwitchAccount,
+                    bottomPadding = if (editingProfile) 0.dp else barFootprint,
+                    editingProfile = editingProfile,
+                    onEditingProfileChange = { editingProfile = it },
+                )
                 }
             }
             // 悬浮胶囊导航：不占布局位，浮在内容之上；液态玻璃透出底下的内容
