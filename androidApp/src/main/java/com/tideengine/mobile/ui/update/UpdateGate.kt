@@ -9,15 +9,9 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.systemBarsPadding
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -30,10 +24,17 @@ import com.tideengine.mobile.ui.components.TideGhostButton
 import com.tideengine.mobile.ui.components.TidePrimaryButton
 import io.github.suqi8.coui.kmp.basic.Text
 import io.github.suqi8.coui.kmp.theme.COUITheme
-import kotlinx.coroutines.delay
 
 /** 门禁与横幅的诊断日志 tag，与 UpdateManager 的检查日志同 tag 便于串联。 */
 private const val LOG_TAG = "TideUpdate"
+
+/** 可选更新横幅覆盖的阶段：发现新版本、下载中、已就绪、失败（非强制）。 */
+private val OPTIONAL_BANNER_STAGES = setOf(
+    UpdateStage.AVAILABLE,
+    UpdateStage.DOWNLOADING,
+    UpdateStage.READY,
+    UpdateStage.FAILED,
+)
 
 /**
  * 热更新门禁：强制更新拦截页 + 可选更新对话框逻辑。
@@ -68,7 +69,10 @@ fun UpdateGate(
         return
     }
     content()
-    if (status.stage == UpdateStage.AVAILABLE && !status.forced) {
+    // 可选更新的横幅覆盖整个生命周期：AVAILABLE（发现新版本）→ DOWNLOADING
+    // （下载进度）→ READY（立即安装）→ FAILED（失败重试）。此前只在 AVAILABLE
+    // 阶段组合，进入下载即消失，进度与结果全部不可见（真机对接踩中）
+    if (!status.forced && status.stage in OPTIONAL_BANNER_STAGES) {
         OptionalUpdateBanner(
             status = status,
             onDownload = onDownload,
@@ -172,26 +176,19 @@ private fun OptionalUpdateBanner(
     onDismiss: () -> Unit,
 ) {
     val scheme = COUITheme.colorScheme
-    // 下载中横幅保持常驻；READY 后短暂展示入口，避免长期遮挡主界面。
-    var showReady by remember { mutableStateOf(true) }
-    LaunchedEffect(status.stage) {
-        if (status.stage == UpdateStage.READY) {
-            delay(10_000)
-            showReady = false
-        }
-    }
-    // AVAILABLE（检查发现新版本、尚未下载）也必须可见：否则用户永远看不到
-    // 「发现新版本」，整包更新入口就断了——此前横幅只覆盖 DOWNLOADING/READY
+    // 横幅在发现新版本 / 下载中 / 已就绪 / 失败四个阶段持续可见，直到用户点
+    // 「稍后 / 隐藏」或完成安装——解决「不知道下载到哪、装没装」
     val visible = when (status.stage) {
-        UpdateStage.AVAILABLE, UpdateStage.DOWNLOADING -> true
-        UpdateStage.READY -> showReady
+        UpdateStage.AVAILABLE, UpdateStage.DOWNLOADING, UpdateStage.FAILED, UpdateStage.READY -> true
         else -> false
     }
     if (!visible) return
+    val release = status.release
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(12.dp),
+            // 底部避开悬浮胶囊导航栏（56dp 胶囊 + 边距），横幅悬浮在其上方
+            .padding(horizontal = 12.dp, bottom = 88.dp),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Column(
@@ -202,18 +199,23 @@ private fun OptionalUpdateBanner(
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            val release = status.release
             Text(
                 text = when (status.stage) {
                     UpdateStage.DOWNLOADING -> "正在下载更新 ${status.progressPercent}%"
                     UpdateStage.AVAILABLE -> "发现新版本${release?.versionName?.let { " $it" } ?: ""}"
-                    else -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
+                    UpdateStage.READY -> "新版本${release?.versionName?.let { " $it" } ?: ""}已就绪"
+                    UpdateStage.FAILED -> "下载失败"
+                    else -> "潮汐引擎更新"
                 },
                 color = scheme.labelPrimary,
                 fontSize = 14.sp,
                 fontWeight = FontWeight.SemiBold,
             )
             when (status.stage) {
+                UpdateStage.DOWNLOADING -> LinearProgressIndicator(
+                    progress = status.progressPercent / 100f,
+                    modifier = Modifier.fillMaxWidth(),
+                )
                 UpdateStage.AVAILABLE -> release?.releaseNote?.takeIf { it.isNotBlank() }?.let {
                     Text(
                         text = it,
@@ -224,6 +226,11 @@ private fun OptionalUpdateBanner(
                 UpdateStage.READY -> Text(
                     text = "安装包已下载并通过校验，点击立即安装",
                     color = scheme.labelSecondaryVariant,
+                    fontSize = 12.sp,
+                )
+                UpdateStage.FAILED -> Text(
+                    text = status.error ?: "下载失败，请重试",
+                    color = scheme.error,
                     fontSize = 12.sp,
                 )
                 else -> Unit
@@ -237,6 +244,10 @@ private fun OptionalUpdateBanner(
                         TideGhostButton(text = "稍后", onClick = onDismiss)
                     }
                     UpdateStage.DOWNLOADING -> TideGhostButton(text = "隐藏", onClick = onDismiss)
+                    UpdateStage.FAILED -> {
+                        TidePrimaryButton(text = "重试下载", onClick = onDownload)
+                        TideGhostButton(text = "稍后", onClick = onDismiss)
+                    }
                     else -> {
                         TidePrimaryButton(text = "立即安装", onClick = onInstall)
                         TideGhostButton(text = "稍后", onClick = onDismiss)
